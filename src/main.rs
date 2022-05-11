@@ -14,6 +14,7 @@ use xxhash_rust::xxh3::Xxh3;
 #[derive(Subcommand, Debug)]
 enum Action {
     Commit,
+    Status { path: String },
     Init { path: String },
     Add { path: String },
     Fetch { remote: String },
@@ -120,6 +121,11 @@ fn get_connection(path: &Path) -> Result<Connection, Box<dyn Error>> {
     let mut db_path = path.to_path_buf();
     db_path.push(".sssync.db");
     let connection = Connection::open(db_path.as_path())?;
+    Ok(connection)
+}
+
+fn init(path: &Path) -> Result<(), Box<dyn Error>> {
+    let connection = get_connection(path)?;
     connection.execute(
         "CREATE TABLE objects (hash TEXT primary key, path TEXT not null)",
         params![],
@@ -131,11 +137,6 @@ fn get_connection(path: &Path) -> Result<Connection, Box<dyn Error>> {
     )?;
 
     connection.execute("CREATE TABLE commits (hash TEXT primary key)", params![])?;
-    Ok(connection)
-}
-
-fn init(path: &Path) -> Result<(), Box<dyn Error>> {
-    get_connection(path)?;
     Ok(())
 }
 
@@ -144,17 +145,13 @@ fn has_db_file(path: &Path) -> bool {
 }
 
 fn get_root_path(path: &Path) -> Option<&Path> {
-    println!("searching for parent ./sssync.db");
-    match path.parent() {
-        Some(parent) => {
-            println!("parent {}", parent.display());
-            if has_db_file(parent) {
-                Some(parent)
-            } else {
-                get_root_path(parent)
-            }
+    if has_db_file(path) {
+        Some(path)
+    } else {
+        match path.parent() {
+            Some(parent) => get_root_path(parent),
+            None => None,
         }
-        None => None,
     }
 }
 
@@ -188,32 +185,74 @@ fn add(connection: &Connection, path: &Path) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+fn select_staging_info(connection: &Connection) -> Result<(), Box<dyn Error>> {
+    let mut stmt = connection.prepare("SELECT hash, path FROM staging")?;
+    let file_entries = stmt.query_map([], |row| {
+        Ok(FileEntry {
+            hash: row.get(0)?,
+            path: row.get(1)?,
+        })
+    })?;
+
+    for file_entry in file_entries {
+        let file_entry = file_entry.unwrap();
+        println!("File Entry: {}:{}", file_entry.path, file_entry.hash)
+    }
+
+    Ok(())
+}
+
+fn status(connection: &Connection, _path: &Path) -> Result<(), Box<dyn Error>> {
+    select_staging_info(connection)?;
+    Ok(())
+}
+
 fn run() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
 
     match &cli.action {
-        Action::Commit => {}
+        Action::Commit => Ok(()),
+        Action::Status { path } => {
+            let path = fs::canonicalize(path)?;
+            // struggling to get errors to type correctly here
+            //let root_path = get_root_path(path)
+            //    .ok_or(format!("No sssync directory found {}", path.display()).into())?;
+            match get_root_path(&path) {
+                Some(root_path) => {
+                    let connection = get_connection(root_path)?;
+                    status(&connection, &path)
+                }
+                None => {
+                    return Err(format!("not in a sssync'd directory: {}", path.display()).into())
+                }
+            }
+        }
         Action::Init { path } => {
             let path = Path::new(path);
             if !path.is_dir() {
                 return Err(format!("desintation {} must be a directory", path.display()).into());
             }
-            init(path)?;
+            init(path)
         }
         Action::Add { path } => {
-            let path = Path::new(path);
+            let path = fs::canonicalize(path)?;
+            // struggling to get errors to type correctly here
             //let root_path = get_root_path(path)
             //    .ok_or(format!("No sssync directory found {}", path.display()).into())?;
-            let root_path = get_root_path(path).unwrap();
-            let connection = get_connection(root_path)?;
-            add(&connection, path)?;
+            match get_root_path(&path) {
+                Some(root_path) => {
+                    let connection = get_connection(root_path)?;
+                    add(&connection, &path)
+                }
+                None => {
+                    return Err(format!("not in a sssync'd directory: {}", path.display()).into())
+                }
+            }
         }
-        Action::Fetch { remote } => {}
-        Action::Push { remote } => {}
-        Action::Diff { remote } => {}
+        Action::Fetch { remote } => Ok(()),
+        Action::Push { remote } => Ok(()),
+        Action::Diff { remote } => Ok(()),
     }
-
-    Ok(())
 }
 
 fn main() {
