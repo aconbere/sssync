@@ -3,19 +3,33 @@ use std::path::Path;
 
 use rusqlite::Connection;
 
-use crate::db::{get_connection, init_db, staging_get_all, staging_insert_batch};
+use crate::db;
 use crate::file_entry::{all_files, FileEntry};
+use crate::store;
 
-pub fn add(connection: &Connection, path: &Path) -> Result<(), Box<dyn Error>> {
-    if path.is_dir() {
-        let file_entries = all_files(path).unwrap_or(vec![]);
-        staging_insert_batch(connection, file_entries)?;
+pub fn add(
+    connection: &Connection,
+    full_path: &Path,
+    root_path: &Path,
+    rel_path: &Path,
+) -> Result<(), Box<dyn Error>> {
+    if full_path.is_dir() {
+        println!("adding directory: {}", rel_path.display());
+        let files = all_files(full_path).unwrap_or(vec![]);
+        for file in files {
+            println!("f: {}", file.display());
+            let file_entry = FileEntry::hash(&root_path.join(&file), &file)?;
+            println!("File: {}::{}", file_entry.path, file_entry.hash);
+            db::staging_insert(connection, &file_entry)?;
+        }
         return Ok(());
     }
 
-    if path.is_file() {
-        let file_entry = FileEntry::hash(path, path)?;
-        staging_insert_batch(connection, vec![file_entry])?;
+    if full_path.is_file() {
+        println!("adding file: {}", rel_path.display());
+        let file_entry = FileEntry::hash(full_path, rel_path)?;
+        println!("File: {}::{}", file_entry.path, file_entry.hash);
+        db::staging_insert(connection, &file_entry)?;
         return Ok(());
     }
 
@@ -23,12 +37,18 @@ pub fn add(connection: &Connection, path: &Path) -> Result<(), Box<dyn Error>> {
 }
 
 pub fn status(connection: &Connection, _path: &Path) -> Result<(), Box<dyn Error>> {
-    staging_get_all(connection)?;
+    db::staging_get_all(connection)?;
     Ok(())
 }
 
 pub fn init(path: &Path) -> Result<(), Box<dyn Error>> {
-    let connection = get_connection(path)?;
-    init_db(connection);
+    store::init(&path)?;
+
+    let store_path = store::store_path(path);
+    let db_path = db::db_path(&store_path);
+
+    let connection = db::get_connection(&db_path)?;
+    println!("found connection: {}", db_path.display());
+    db::init(connection)?;
     Ok(())
 }

@@ -7,6 +7,7 @@ mod cli;
 mod db;
 mod file_entry;
 mod hash;
+mod store;
 
 fn main() {
     exit(match run() {

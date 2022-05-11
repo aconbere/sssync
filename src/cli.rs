@@ -5,6 +5,7 @@ use std::path::Path;
 
 use crate::actions::{add, init, status};
 use crate::db::get_connection;
+use crate::store::get_root_path;
 
 #[derive(Subcommand, Debug)]
 pub enum Action {
@@ -24,21 +25,6 @@ pub struct Cli {
     action: Action,
 }
 
-fn has_db_file(path: &Path) -> bool {
-    path.join(".sssync.db").exists()
-}
-
-fn get_root_path(path: &Path) -> Option<&Path> {
-    if has_db_file(path) {
-        Some(path)
-    } else {
-        match path.parent() {
-            Some(parent) => get_root_path(parent),
-            None => None,
-        }
-    }
-}
-
 pub fn run() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
 
@@ -46,9 +32,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         Action::Commit => Ok(()),
         Action::Status { path } => {
             let path = fs::canonicalize(path)?;
-            // struggling to get errors to type correctly here
-            //let root_path = get_root_path(path)
-            //    .ok_or(format!("No sssync directory found {}", path.display()).into())?;
             match get_root_path(&path) {
                 Some(root_path) => {
                     let connection = get_connection(root_path)?;
@@ -67,14 +50,14 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             init(path)
         }
         Action::Add { path } => {
+            println!("Action::Add: {}", path);
             let path = fs::canonicalize(path)?;
-            // struggling to get errors to type correctly here
-            //let root_path = get_root_path(path)
-            //    .ok_or(format!("No sssync directory found {}", path.display()).into())?;
             match get_root_path(&path) {
                 Some(root_path) => {
+                    println!("Root Path: {}", root_path.display());
+                    let rel_path = path.strip_prefix(root_path)?;
                     let connection = get_connection(root_path)?;
-                    add(&connection, &path)
+                    add(&connection, &path, &root_path, &rel_path)
                 }
                 None => {
                     return Err(format!("not in a sssync'd directory: {}", path.display()).into())
