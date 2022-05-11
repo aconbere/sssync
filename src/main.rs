@@ -1,4 +1,3 @@
-use base64ct::{Base64, Encoding};
 use std::env;
 use std::error::Error;
 use std::fs;
@@ -7,6 +6,9 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::exit;
 
+use base64ct::{Base64, Encoding};
+use rusqlite::params;
+use rusqlite::Connection;
 use xxhash_rust::xxh3::Xxh3;
 
 fn u128_to_byte_array(n: u128) -> [u8; 16] {
@@ -86,26 +88,36 @@ fn all_files_inner(start: &Path, up_to_path: PathBuf) -> Result<Vec<FileEntry>, 
     Ok(results)
 }
 
-fn run() -> Result<(), String> {
+fn init(path: &Path) -> Result<(), Box<dyn Error>> {
+    let mut db_path = path.to_path_buf();
+    db_path.push(".sssync.db");
+    let connection = Connection::open(db_path.as_path())?;
+    connection.execute(
+        "CREATE TABLE objects (hash TEXT primary key, path TEXT not null)",
+        params![],
+    )?;
+    Ok(())
+}
+
+fn run() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 3 {
-        return Err(String::from("ssync requires two arguments"));
+        return Err(String::from("ssync requires two arguments").into());
     }
 
     let source = Path::new(&args[1]);
     let destination = Path::new(&args[2]);
 
     if !source.is_dir() {
-        return Err(format!("source {} must be a directory", source.display()));
+        return Err(format!("source {} must be a directory", source.display()).into());
     };
 
     if !destination.is_dir() {
-        return Err(format!(
-            "source {} must be a directory",
-            destination.display()
-        ));
+        return Err(format!("source {} must be a directory", destination.display()).into());
     };
+
+    init(source)?;
 
     println!(
         "syncing {} into {}",
