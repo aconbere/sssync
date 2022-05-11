@@ -1,6 +1,7 @@
 use base64ct::{Base64, Encoding};
 use sha2::{Digest, Sha256};
 use std::env;
+use std::error::Error;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -11,92 +12,48 @@ struct FileEntry {
     hash: String,
 }
 
-fn hash_file(path: &Path) -> Result<String, String> {
+fn hash_file(path: &Path) -> Result<String, Box<dyn Error>> {
     let mut hasher = Sha256::new();
-
-    let mut file = match fs::File::open(&path) {
-        Ok(f) => f,
-        Err(_) => {
-            return Err(format!("Failed to open file: {}", path.display()));
-        }
-    };
-
-    match io::copy(&mut file, &mut hasher) {
-        Ok(_) => {}
-        Err(_) => {
-            return Err(format!(
-                "Failed to copy bytes from file, {}",
-                path.display()
-            ));
-        }
-    };
+    let mut file = fs::File::open(&path)?;
+    io::copy(&mut file, &mut hasher)?;
     let hash = hasher.finalize();
     Ok(Base64::encode_string(&hash))
 }
-fn all_files(start: &Path) -> Result<Vec<FileEntry>, String> {
+fn all_files(start: &Path) -> Result<Vec<FileEntry>, Box<dyn Error>> {
     all_files_inner(start, PathBuf::from("./"))
 }
 
-fn all_files_inner(start: &Path, up_to_path: PathBuf) -> Result<Vec<FileEntry>, String> {
-    match fs::read_dir(start) {
-        Ok(contents) => {
-            let mut results = Vec::new();
+fn all_files_inner(start: &Path, up_to_path: PathBuf) -> Result<Vec<FileEntry>, Box<dyn Error>> {
+    let contents = fs::read_dir(start)?;
+    let mut results: Vec<FileEntry> = Vec::new();
 
-            for entry in contents {
-                match entry {
-                    Ok(entry) => {
-                        let path = entry.path();
-                        let mut next_up_to_path = up_to_path.clone();
-                        next_up_to_path.push(entry.file_name());
+    for entry in contents {
+        let entry = entry?;
+        let path = entry.path();
+        let mut next_up_to_path = up_to_path.clone();
+        next_up_to_path.push(entry.file_name());
 
-                        if path.is_dir() {
-                            match all_files_inner(&path, next_up_to_path) {
-                                Ok(sub_results) => {
-                                    results.extend(sub_results);
-                                }
-                                Err(err) => {
-                                    return Err(err);
-                                }
-                            };
-                        } else {
-                            let hash = hash_file(&path).unwrap();
+        if path.is_dir() {
+            let sub_results = all_files_inner(&path, next_up_to_path)?;
+            results.extend(sub_results);
+        } else {
+            let path_str = next_up_to_path.to_str().unwrap();
+            println!("processing file: {}", path_str);
+            let hash = hash_file(&path).unwrap();
 
-                            let path_str = match next_up_to_path.to_str() {
-                                Some(s) => s,
-                                None => {
-                                    return Err(format!(
-                                        "path contained invalid unicode, {}",
-                                        path.display()
-                                    ));
-                                }
-                            };
-
-                            results.push(FileEntry {
-                                path: path_str.to_string(),
-                                hash: hash,
-                            });
-                        }
-                    }
-                    Err(_) => {
-                        return Err(String::from("whatever"));
-                    }
-                };
-            }
-            return Ok(results);
-        }
-        Err(_) => {
-            return Err(format!(
-                "could not read source directory: {}",
-                start.display()
-            ));
+            results.push(FileEntry {
+                path: path_str.to_string(),
+                hash: hash,
+            });
         }
     }
+    Ok(results)
 }
 
 fn run() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() < 2 {
+    if args.len() < 3 {
         return Err(String::from("ssync requires two arguments"));
     }
 
