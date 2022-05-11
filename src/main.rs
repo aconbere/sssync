@@ -1,11 +1,46 @@
 use base64ct::{Base64, Encoding};
-use sha2::{Digest, Sha256};
 use std::env;
 use std::error::Error;
 use std::fs;
 use std::io;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::exit;
+
+use xxhash_rust::xxh3::Xxh3;
+
+fn u128_to_byte_array(n: u128) -> [u8; 16] {
+    let mut out: [u8; 16] = [0; 16];
+
+    for i in 0..16 {
+        out[i] = (n >> (16 - i)) as u8;
+    }
+
+    out
+}
+
+struct Xxh3Writer {
+    hasher: Xxh3,
+}
+
+impl Xxh3Writer {
+    pub const fn new() -> Self {
+        Self {
+            hasher: Xxh3::new(),
+        }
+    }
+}
+
+impl Write for Xxh3Writer {
+    fn write(&mut self, buf: &[u8]) -> Result<usize, io::Error> {
+        self.hasher.update(buf);
+        return Ok(buf.len());
+    }
+
+    fn flush(&mut self) -> Result<(), io::Error> {
+        return Ok(());
+    }
+}
 
 struct FileEntry {
     path: String,
@@ -13,11 +48,12 @@ struct FileEntry {
 }
 
 fn hash_file(path: &Path) -> Result<String, Box<dyn Error>> {
-    let mut hasher = Sha256::new();
+    let mut hasher = Xxh3Writer::new();
+
     let mut file = fs::File::open(&path)?;
     io::copy(&mut file, &mut hasher)?;
-    let hash = hasher.finalize();
-    Ok(Base64::encode_string(&hash))
+    let hash = hasher.hasher.digest128();
+    Ok(Base64::encode_string(&u128_to_byte_array(hash)))
 }
 fn all_files(start: &Path) -> Result<Vec<FileEntry>, Box<dyn Error>> {
     all_files_inner(start, PathBuf::from("./"))
@@ -38,8 +74,8 @@ fn all_files_inner(start: &Path, up_to_path: PathBuf) -> Result<Vec<FileEntry>, 
             results.extend(sub_results);
         } else {
             let path_str = next_up_to_path.to_str().unwrap();
-            println!("processing file: {}", path_str);
             let hash = hash_file(&path).unwrap();
+            println!("processing file: {} : {}", path_str, hash);
 
             results.push(FileEntry {
                 path: path_str.to_string(),
