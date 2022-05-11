@@ -1,4 +1,3 @@
-use std::env;
 use std::error::Error;
 use std::fs;
 use std::io;
@@ -7,9 +6,28 @@ use std::path::{Path, PathBuf};
 use std::process::exit;
 
 use base64ct::{Base64, Encoding};
+use clap::{Parser, Subcommand};
 use rusqlite::params;
 use rusqlite::Connection;
 use xxhash_rust::xxh3::Xxh3;
+
+#[derive(Subcommand, Debug)]
+enum Action {
+    Commit,
+    Init { path: String },
+    Add { path: String },
+    Fetch { remote: String },
+    Push { remote: String },
+    Diff { remote: String },
+}
+
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Cli {
+    #[clap(subcommand)]
+    action: Action,
+}
 
 fn u128_to_byte_array(n: u128) -> [u8; 16] {
     let mut out: [u8; 16] = [0; 16];
@@ -49,14 +67,29 @@ struct FileEntry {
     hash: String,
 }
 
+impl FileEntry {
+    pub fn hash(full_path: &Path, relative_path: &Path) -> Result<Self, Box<dyn Error>> {
+        match hash_file(full_path) {
+            Ok(hash) => match relative_path.to_str() {
+                Some(relative_path_str) => Ok(Self {
+                    path: relative_path_str.to_string(),
+                    hash: hash,
+                }),
+                None => Err(format!("Invalid path: {}", relative_path.display()).into()),
+            },
+            Err(e) => Err(e.into()),
+        }
+    }
+}
+
 fn hash_file(path: &Path) -> Result<String, Box<dyn Error>> {
     let mut hasher = Xxh3Writer::new();
-
     let mut file = fs::File::open(&path)?;
     io::copy(&mut file, &mut hasher)?;
     let hash = hasher.hasher.digest128();
     Ok(Base64::encode_string(&u128_to_byte_array(hash)))
 }
+
 fn all_files(start: &Path) -> Result<Vec<FileEntry>, Box<dyn Error>> {
     all_files_inner(start, PathBuf::from("./"))
 }
@@ -68,27 +101,22 @@ fn all_files_inner(start: &Path, up_to_path: PathBuf) -> Result<Vec<FileEntry>, 
     for entry in contents {
         let entry = entry?;
         let path = entry.path();
-        let mut next_up_to_path = up_to_path.clone();
-        next_up_to_path.push(entry.file_name());
+        let mut relative_path = up_to_path.clone();
+        relative_path.push(entry.file_name());
 
         if path.is_dir() {
-            let sub_results = all_files_inner(&path, next_up_to_path)?;
+            let sub_results = all_files_inner(&path, relative_path)?;
             results.extend(sub_results);
         } else {
-            let path_str = next_up_to_path.to_str().unwrap();
-            let hash = hash_file(&path).unwrap();
-            println!("processing file: {} : {}", path_str, hash);
-
-            results.push(FileEntry {
-                path: path_str.to_string(),
-                hash: hash,
-            });
+            let file_entry = FileEntry::hash(path.as_path(), relative_path.as_path())?;
+            println!("processing file: {} : {}", file_entry.path, file_entry.hash);
+            results.push(file_entry);
         }
     }
     Ok(results)
 }
 
-fn init(path: &Path) -> Result<(), Box<dyn Error>> {
+fn get_connection(path: &Path) -> Result<Connection, Box<dyn Error>> {
     let mut db_path = path.to_path_buf();
     db_path.push(".sssync.db");
     let connection = Connection::open(db_path.as_path())?;
@@ -96,40 +124,74 @@ fn init(path: &Path) -> Result<(), Box<dyn Error>> {
         "CREATE TABLE objects (hash TEXT primary key, path TEXT not null)",
         params![],
     )?;
+    Ok(connection)
+}
+
+fn init(path: &Path) -> Result<(), Box<dyn Error>> {
+    get_connection(path)?;
+    Ok(())
+}
+
+fn has_db_file(path: &Path) -> bool {
+    path.join("./sssync.db").exists()
+}
+
+fn get_root_path(path: &Path) -> Option<&Path> {
+    match path.parent() {
+        Some(parent) => {
+            if has_db_file(parent) {
+                Some(parent)
+            } else {
+                get_root_path(parent)
+            }
+        }
+        None => None,
+    }
+}
+
+fn add(path: &Path) -> Result<(), Box<dyn Error>> {
+    if path.is_dir() {
+        let files = all_files(path).unwrap_or(vec![]);
+
+        for f in files {
+            println!("found file: {} with hash: {}", f.path, f.hash);
+        }
+        return Ok(());
+    }
+
+    if path.is_file() {
+        let file_entry = FileEntry::hash(path, path)?;
+        println!("processing file: {} : {}", file_entry.path, file_entry.hash);
+        return Ok(());
+    }
+
     Ok(())
 }
 
 fn run() -> Result<(), Box<dyn Error>> {
-    let args: Vec<String> = env::args().collect();
+    let cli = Cli::parse();
 
-    if args.len() < 3 {
-        return Err(String::from("ssync requires two arguments").into());
+    match &cli.action {
+        Action::Commit => {}
+        Action::Init { path } => {
+            let path = Path::new(path);
+            if !path.is_dir() {
+                return Err(format!("desintation {} must be a directory", path.display()).into());
+            }
+            // handle dropping out if the database already exists;
+            init(path)?;
+        }
+        Action::Add { path } => {
+            let root_path = get_root_path(path);
+            let connection = get_connection(root_path);
+            let path = Path::new(path);
+            add(path)?;
+        }
+        Action::Fetch { remote } => {}
+        Action::Push { remote } => {}
+        Action::Diff { remote } => {}
     }
 
-    let source = Path::new(&args[1]);
-    let destination = Path::new(&args[2]);
-
-    if !source.is_dir() {
-        return Err(format!("source {} must be a directory", source.display()).into());
-    };
-
-    if !destination.is_dir() {
-        return Err(format!("source {} must be a directory", destination.display()).into());
-    };
-
-    init(source)?;
-
-    println!(
-        "syncing {} into {}",
-        source.display(),
-        destination.display()
-    );
-
-    let files = all_files(source).unwrap_or(vec![]);
-
-    for f in files {
-        println!("found file: {} with hash: {}", f.path, f.hash);
-    }
     Ok(())
 }
 
