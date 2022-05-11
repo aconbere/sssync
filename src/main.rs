@@ -124,6 +124,11 @@ fn get_connection(path: &Path) -> Result<Connection, Box<dyn Error>> {
         "CREATE TABLE objects (hash TEXT primary key, path TEXT not null)",
         params![],
     )?;
+    connection.execute(
+        "CREATE TABLE staging (hash TEXT primary key, path TEXT not null)",
+        params![],
+    )?;
+    connection.execute("CREATE TABLE commits (hash TEXT primary key)", params![])?;
     Ok(connection)
 }
 
@@ -149,7 +154,7 @@ fn get_root_path(path: &Path) -> Option<&Path> {
     }
 }
 
-fn add(path: &Path) -> Result<(), Box<dyn Error>> {
+fn add(connection: &Connection, path: &Path) -> Result<(), Box<dyn Error>> {
     if path.is_dir() {
         let files = all_files(path).unwrap_or(vec![]);
 
@@ -182,10 +187,10 @@ fn run() -> Result<(), Box<dyn Error>> {
             init(path)?;
         }
         Action::Add { path } => {
-            let root_path = get_root_path(path);
-            let connection = get_connection(root_path);
             let path = Path::new(path);
-            add(path)?;
+            let root_path = get_root_path(path).unwrap();
+            let connection = get_connection(root_path)?;
+            add(&connection, path)?;
         }
         Action::Fetch { remote } => {}
         Action::Push { remote } => {}
