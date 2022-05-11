@@ -124,10 +124,12 @@ fn get_connection(path: &Path) -> Result<Connection, Box<dyn Error>> {
         "CREATE TABLE objects (hash TEXT primary key, path TEXT not null)",
         params![],
     )?;
+
     connection.execute(
         "CREATE TABLE staging (hash TEXT primary key, path TEXT not null)",
         params![],
     )?;
+
     connection.execute("CREATE TABLE commits (hash TEXT primary key)", params![])?;
     Ok(connection)
 }
@@ -138,12 +140,14 @@ fn init(path: &Path) -> Result<(), Box<dyn Error>> {
 }
 
 fn has_db_file(path: &Path) -> bool {
-    path.join("./sssync.db").exists()
+    path.join(".sssync.db").exists()
 }
 
 fn get_root_path(path: &Path) -> Option<&Path> {
+    println!("searching for parent ./sssync.db");
     match path.parent() {
         Some(parent) => {
+            println!("parent {}", parent.display());
             if has_db_file(parent) {
                 Some(parent)
             } else {
@@ -154,19 +158,30 @@ fn get_root_path(path: &Path) -> Option<&Path> {
     }
 }
 
+fn stage_files(
+    connection: &Connection,
+    file_entries: Vec<FileEntry>,
+) -> Result<(), Box<dyn Error>> {
+    for file_entry in file_entries {
+        connection.execute(
+            "INSERT INTO staging (hash, path) VALUES (?1, ?2)",
+            params![file_entry.hash, file_entry.path],
+        )?;
+    }
+    Ok(())
+}
+
 fn add(connection: &Connection, path: &Path) -> Result<(), Box<dyn Error>> {
     if path.is_dir() {
-        let files = all_files(path).unwrap_or(vec![]);
-
-        for f in files {
-            println!("found file: {} with hash: {}", f.path, f.hash);
-        }
+        let file_entries = all_files(path).unwrap_or(vec![]);
+        stage_files(connection, file_entries)?;
         return Ok(());
     }
 
     if path.is_file() {
         let file_entry = FileEntry::hash(path, path)?;
         println!("processing file: {} : {}", file_entry.path, file_entry.hash);
+        stage_files(connection, vec![file_entry])?;
         return Ok(());
     }
 
@@ -183,11 +198,12 @@ fn run() -> Result<(), Box<dyn Error>> {
             if !path.is_dir() {
                 return Err(format!("desintation {} must be a directory", path.display()).into());
             }
-            // handle dropping out if the database already exists;
             init(path)?;
         }
         Action::Add { path } => {
             let path = Path::new(path);
+            //let root_path = get_root_path(path)
+            //    .ok_or(format!("No sssync directory found {}", path.display()).into())?;
             let root_path = get_root_path(path).unwrap();
             let connection = get_connection(root_path)?;
             add(&connection, path)?;
