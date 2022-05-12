@@ -40,21 +40,19 @@ pub fn init(connection: Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn staging_get_all(connection: &Connection) -> Result<(), Box<dyn Error>> {
+pub fn staging_get_all(connection: &Connection) -> Result<Vec<FileEntry>, Box<dyn Error>> {
     let mut stmt = connection.prepare("SELECT hash, path FROM staging")?;
-    let file_entries = stmt.query_map([], |row| {
-        Ok(FileEntry {
-            hash: row.get(0)?,
-            path: row.get(1)?,
-        })
-    })?;
+    let entries: Vec<FileEntry> = stmt
+        .query_map([], |row| {
+            Ok(FileEntry {
+                hash: row.get(0)?,
+                path: row.get(1)?,
+            })
+        })?
+        .filter_map(|fe| fe.ok())
+        .collect();
 
-    for file_entry in file_entries {
-        let file_entry = file_entry.unwrap();
-        println!("File Entry: {}:{}", file_entry.path, file_entry.hash)
-    }
-
-    Ok(())
+    Ok(entries)
 }
 
 pub fn staging_insert(

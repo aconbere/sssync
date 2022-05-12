@@ -1,5 +1,6 @@
+use std::collections::HashSet;
 use std::error::Error;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use rusqlite::Connection;
 
@@ -36,19 +37,49 @@ pub fn add(
     Ok(())
 }
 
-pub fn status(connection: &Connection, _path: &Path) -> Result<(), Box<dyn Error>> {
-    db::staging_get_all(connection)?;
+pub fn status(connection: &Connection, path: &Path) -> Result<(), Box<dyn Error>> {
+    let staged_files = db::staging_get_all(connection)?;
+
+    let mut staged_set: HashSet<&str> = HashSet::new();
+
+    staged_files.iter().for_each(|fe| {
+        staged_set.insert(fe.path.as_str());
+    });
+
+    let found_files = all_files(path)?;
+
+    let unstaged_files: Vec<&PathBuf> = found_files
+        .iter()
+        .filter(|path| match path.to_str() {
+            Some(s) => !staged_set.contains(s),
+            None => false,
+        })
+        .collect();
+
+    println!("Status\n");
+
+    if staged_files.len() > 0 {
+        println!("Staged Files");
+        staged_files.iter().for_each(|fe| println!("\t{}", fe.path));
+    }
+
+    if unstaged_files.len() > 0 {
+        println!("Unstaged Files");
+        unstaged_files.iter().for_each(|p| match p.to_str() {
+            Some(s) => println!("\t{}", s),
+            None => {}
+        });
+    }
+
     Ok(())
 }
 
 pub fn init(path: &Path) -> Result<(), Box<dyn Error>> {
+    println!("init: {}", path.display());
     store::init(&path)?;
 
-    let store_path = store::store_path(path);
-    let db_path = db::db_path(&store_path);
-
-    let connection = db::get_connection(&db_path)?;
-    println!("found connection: {}", db_path.display());
+    let connection = db::get_connection(&path)?;
+    println!("found connection: {}", path.display());
     db::init(connection)?;
     Ok(())
 }
