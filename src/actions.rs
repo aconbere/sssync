@@ -22,7 +22,7 @@ pub fn add(
             println!("f: {}", file.display());
             let file_entry = FileEntry::hash(&root_path.join(&file), &file)?;
             println!("File: {}::{}", file_entry.path, file_entry.hash);
-            db::staging_insert(connection, &file_entry)?;
+            db::staging::insert(connection, &file_entry)?;
         }
         return Ok(());
     }
@@ -31,7 +31,7 @@ pub fn add(
         println!("adding file: {}", rel_path.display());
         let file_entry = FileEntry::hash(full_path, rel_path)?;
         println!("File: {}::{}", file_entry.path, file_entry.hash);
-        db::staging_insert(connection, &file_entry)?;
+        db::staging::insert(connection, &file_entry)?;
         return Ok(());
     }
 
@@ -39,7 +39,7 @@ pub fn add(
 }
 
 pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
-    let staged_files = db::staging_get_all(connection)?;
+    let staged_files = db::staging::get_all(connection)?;
 
     let mut staged_map: HashMap<&str, &FileEntry> = HashMap::new();
 
@@ -89,12 +89,12 @@ pub fn init(root_path: &Path) -> Result<(), Box<dyn Error>> {
 
     let connection = db::get_connection(&root_path)?;
     println!("found connection: {}", root_path.display());
-    db::init(connection)?;
+    db::init(&connection)?;
     Ok(())
 }
 
 pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
-    let staged_files = db::staging_get_all(connection)?;
+    let staged_files = db::staging::get_all(connection)?;
 
     for file in staged_files {
         fs::copy(
