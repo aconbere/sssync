@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::store;
 
 pub mod commit;
+pub mod reference;
 pub mod staging;
 pub mod tree;
 
@@ -25,5 +26,6 @@ pub fn init(connection: &Connection) -> Result<(), Box<dyn Error>> {
     staging::create_table(connection)?;
     tree::create_table(connection)?;
     commit::create_table(connection)?;
+    reference::create_table(connection)?;
     Ok(())
 }

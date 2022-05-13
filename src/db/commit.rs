@@ -3,6 +3,7 @@ use std::error::Error;
 use rusqlite::params;
 use rusqlite::Connection;
 
+use crate::db::reference;
 use crate::models::commit::Commit;
 
 pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
@@ -36,5 +37,6 @@ pub fn insert(connection: &Connection, commit: &Commit) -> Result<(), Box<dyn Er
             commit.created_unix_timestamp,
         ],
     )?;
+    reference::update_head(connection, &commit.hash)?;
     Ok(())
 }

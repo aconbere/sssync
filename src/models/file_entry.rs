@@ -1,10 +1,10 @@
-use crate::hash::hash_file;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
+use crate::hash::{hash_file, hash_string};
 use crate::store;
 
 pub struct FileEntry {
@@ -111,4 +111,6 @@ pub fn copy_if_not_present(file_entry: &FileEntry, root_path: &Path) -> Result<(
     Ok(())
 }
 
-//pub fn hash_all(file_entries: Vec<FileEntry>) -> String {}
+pub fn hash_all(file_entries: &Vec<FileEntry>) -> String {
+    hash_string(file_entries.iter().map(|fe| fe.hash.as_str()).collect())
+}

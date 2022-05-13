@@ -5,7 +5,7 @@ use std::io::Write;
 use std::path::Path;
 
 use hex;
-use xxhash_rust::xxh3::Xxh3;
+use xxhash_rust::xxh3::{xxh3_128, Xxh3};
 
 fn u128_to_byte_array(n: u128) -> [u8; 16] {
     let mut out: [u8; 16] = [0; 16];
@@ -46,4 +46,8 @@ pub fn hash_file(path: &Path) -> Result<String, Box<dyn Error>> {
     io::copy(&mut file, &mut hasher)?;
     let hash = hasher.hasher.digest128();
     Ok(hex::encode(&u128_to_byte_array(hash)))
+}
+
+pub fn hash_string(s: String) -> String {
+    hex::encode(&u128_to_byte_array(xxh3_128(s.as_bytes())))
 }

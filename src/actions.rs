@@ -8,6 +8,7 @@ use rusqlite::Connection;
 use crate::db;
 use crate::models::commit;
 use crate::models::file_entry;
+use crate::models::tree_entry;
 use crate::store;
 
 pub fn add(
@@ -72,7 +73,7 @@ pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
             .iter()
             .for_each(|fe| match file_entry::compare_to_disk(fe, root_path) {
                 Ok(cp) => {
-                    let state = if cp { "" } else { "modified: " };
+                    let state = if !cp { "" } else { "modified: " };
                     println!("\t{}{}", state, fe.path)
                 }
                 Err(_) => {}
@@ -103,9 +104,17 @@ pub fn init(root_path: &Path) -> Result<(), Box<dyn Error>> {
 pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
     let staged_files = db::staging::get_all(connection)?;
 
-    let hash = "";
+    let hash = file_entry::hash_all(&staged_files);
     let commit = commit::new(&hash, "", "")?;
+
     db::commit::insert(connection, &commit)?;
+
+    let tree_entries: Vec<tree_entry::TreeEntry> = staged_files
+        .iter()
+        .map(|fe| tree_entry::from_file_entry(&commit.hash, fe))
+        .collect();
+
+    db::tree::insert_batch(connection, tree_entries)?;
 
     // for every staged file we want to copy them to the object store
     // with the filename representing their hash
