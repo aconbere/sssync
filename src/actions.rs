@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 use rusqlite::Connection;
 
+use crate::commit;
 use crate::db;
 use crate::file_entry::{all_files, compare_file_entry, FileEntry};
 use crate::store;
@@ -19,11 +20,17 @@ pub fn add(
         println!("adding directory: {}", rel_path.display());
         let files = all_files(full_path).unwrap_or(vec![]);
         for file in files {
-            println!("f: {}", file.display());
             let file_entry = FileEntry::hash(&root_path.join(&file), &file)?;
             println!("File: {}::{}", file_entry.path, file_entry.hash);
+
+            fs::copy(
+                root_path.join(&file_entry.path),
+                store::object_path(root_path, &file_entry.hash),
+            )?;
+
             db::staging::insert(connection, &file_entry)?;
         }
+
         return Ok(());
     }
 
@@ -31,6 +38,10 @@ pub fn add(
         println!("adding file: {}", rel_path.display());
         let file_entry = FileEntry::hash(full_path, rel_path)?;
         println!("File: {}::{}", file_entry.path, file_entry.hash);
+        fs::copy(
+            root_path.join(&file_entry.path),
+            store::object_path(root_path, &file_entry.hash),
+        )?;
         db::staging::insert(connection, &file_entry)?;
         return Ok(());
     }
@@ -96,12 +107,10 @@ pub fn init(root_path: &Path) -> Result<(), Box<dyn Error>> {
 pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
     let staged_files = db::staging::get_all(connection)?;
 
-    for file in staged_files {
-        fs::copy(
-            root_path.join(file.path),
-            store::object_path(root_path, file.hash),
-        )?;
-    }
+    let hash = "";
+    let commit = commit::new(&hash, "", "")?;
+    db::commit::insert(connection, &commit)?;
+
     // for every staged file we want to copy them to the object store
     // with the filename representing their hash
     //

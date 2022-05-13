@@ -13,7 +13,7 @@ pub fn store_path(root_path: &Path) -> PathBuf {
     root_path.join(STORE_DIR)
 }
 
-pub fn object_path(root_path: &Path, hash: String) -> PathBuf {
+pub fn object_path(root_path: &Path, hash: &str) -> PathBuf {
     let mut p = PathBuf::new();
     p.push(STORE_DIR);
     p.push("objects");

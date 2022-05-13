@@ -1,7 +1,9 @@
+use std::error::Error;
+
 use rusqlite::params;
 use rusqlite::Connection;
 
-use std::error::Error;
+use crate::commit::Commit;
 
 pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     connection.execute(
@@ -19,7 +21,7 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn insert(connection: &Connection) -> Result<(), Box<dyn Error>> {
+pub fn insert(connection: &Connection, commit: &Commit) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
         INSERT INTO
@@ -28,10 +30,10 @@ pub fn insert(connection: &Connection) -> Result<(), Box<dyn Error>> {
             (?1, ?2, ?3, ?4)
         ",
         params![
-            "asdfadfadf",
-            "Tax Time",
-            "anders@conbere.org<Anders Conbere>",
-            12312,
+            commit.hash,
+            commit.comment,
+            commit.author,
+            commit.created_unix_timestamp,
         ],
     )?;
     Ok(())

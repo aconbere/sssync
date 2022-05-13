@@ -31,6 +31,8 @@ pub fn insert(connection: &Connection, file_entry: &FileEntry) -> Result<(), Box
         ON CONFLICT (hash)
         DO UPDATE SET
             path = excluded.path
+            size_bytes = excluded.size_bytes
+            modified_time_seconds = excluded.modified_time_seconds
         ",
         params![
             file_entry.hash,
