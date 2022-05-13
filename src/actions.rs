@@ -114,10 +114,19 @@ pub fn init(root_path: &Path) -> Result<(), Box<dyn Error>> {
 pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
     let staged_files = db::staging::get_all(connection)?;
 
+    // This is wrong; should be the concatenation of all
+    // staged files overlayed with the files in the
+    // current tree;
     let hash = file_entry::hash_all(&staged_files);
     let commit = commit::new(&hash, "", "")?;
 
-    db::commit::insert(connection, &commit)?;
+    match db::commit::insert(connection, &commit) {
+        Err(_) => {
+            println!("Nothing to commit");
+            return Ok(());
+        }
+        Ok(()) => {}
+    }
 
     let tree_entries: Vec<tree_entry::TreeEntry> = staged_files
         .iter()
