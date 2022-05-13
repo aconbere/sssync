@@ -25,6 +25,7 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
 }
 
 pub fn insert(connection: &Connection, commit: &Commit) -> Result<(), Box<dyn Error>> {
+    println!("setting commit: {}", commit.hash);
     connection.execute(
         "
         INSERT INTO
@@ -39,7 +40,9 @@ pub fn insert(connection: &Connection, commit: &Commit) -> Result<(), Box<dyn Er
             commit.created_unix_timestamp,
         ],
     )?;
+    println!("updating head");
     reference::update_head(connection, &commit.hash)?;
+    println!("deleting staging");
     staging::delete(connection)?;
     Ok(())
 }
