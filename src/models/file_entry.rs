@@ -5,6 +5,8 @@ use std::fs;
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
+use crate::store;
+
 pub struct FileEntry {
     pub path: String,
     pub hash: String,
@@ -46,11 +48,11 @@ fn should_ignore(ignore: &HashSet<String>, path: &Path) -> bool {
     }
 }
 
-pub fn all_files(root: &Path) -> Result<Vec<PathBuf>, Box<dyn Error>> {
-    all_files_inner(root, PathBuf::from(""), &default_ignore())
+pub fn get_all(root: &Path) -> Result<Vec<PathBuf>, Box<dyn Error>> {
+    get_all_inner(root, PathBuf::from(""), &default_ignore())
 }
 
-fn all_files_inner(
+fn get_all_inner(
     root: &Path,
     rel_path: PathBuf,
     ignore: &HashSet<String>,
@@ -71,7 +73,7 @@ fn all_files_inner(
         next_path.push(entry.file_name());
 
         if path.is_dir() {
-            let sub_results = all_files_inner(&path, next_path, ignore)?;
+            let sub_results = get_all_inner(&path, next_path, ignore)?;
             results.extend(sub_results);
         } else {
             results.push(next_path);
@@ -95,7 +97,18 @@ pub fn lstat(path: &Path) -> std::io::Result<libc::stat> {
     }
 }
 
-pub fn compare_file_entry(fe: &FileEntry, root_path: &Path) -> Result<bool, Box<dyn Error>> {
+pub fn compare_to_disk(fe: &FileEntry, root_path: &Path) -> Result<bool, Box<dyn Error>> {
     let meta = lstat(Path::new(&root_path.join(&fe.path)))?;
     Ok(fe.size_bytes != meta.st_size || fe.modified_time_seconds != meta.st_mtime)
 }
+
+pub fn copy_if_not_present(file_entry: &FileEntry, root_path: &Path) -> Result<(), Box<dyn Error>> {
+    let full_path = root_path.join(&file_entry.path);
+
+    if !full_path.exists() {
+        fs::copy(full_path, store::object_path(root_path, &file_entry.hash))?;
+    }
+    Ok(())
+}
+
+//pub fn hash_all(file_entries: Vec<FileEntry>) -> String {}

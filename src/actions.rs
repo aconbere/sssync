@@ -5,9 +5,9 @@ use std::path::{Path, PathBuf};
 
 use rusqlite::Connection;
 
-use crate::commit;
 use crate::db;
-use crate::file_entry::{all_files, compare_file_entry, FileEntry};
+use crate::models::commit;
+use crate::models::file_entry;
 use crate::store;
 
 pub fn add(
@@ -18,16 +18,12 @@ pub fn add(
 ) -> Result<(), Box<dyn Error>> {
     if full_path.is_dir() {
         println!("adding directory: {}", rel_path.display());
-        let files = all_files(full_path).unwrap_or(vec![]);
+        let files = file_entry::get_all(full_path).unwrap_or(vec![]);
         for file in files {
-            let file_entry = FileEntry::hash(&root_path.join(&file), &file)?;
+            let file_entry = file_entry::FileEntry::hash(&root_path.join(&file), &file)?;
             println!("File: {}::{}", file_entry.path, file_entry.hash);
 
-            fs::copy(
-                root_path.join(&file_entry.path),
-                store::object_path(root_path, &file_entry.hash),
-            )?;
-
+            file_entry::copy_if_not_present(&file_entry, root_path)?;
             db::staging::insert(connection, &file_entry)?;
         }
 
@@ -36,7 +32,7 @@ pub fn add(
 
     if full_path.is_file() {
         println!("adding file: {}", rel_path.display());
-        let file_entry = FileEntry::hash(full_path, rel_path)?;
+        let file_entry = file_entry::FileEntry::hash(full_path, rel_path)?;
         println!("File: {}::{}", file_entry.path, file_entry.hash);
         fs::copy(
             root_path.join(&file_entry.path),
@@ -52,13 +48,13 @@ pub fn add(
 pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
     let staged_files = db::staging::get_all(connection)?;
 
-    let mut staged_map: HashMap<&str, &FileEntry> = HashMap::new();
+    let mut staged_map: HashMap<&str, &file_entry::FileEntry> = HashMap::new();
 
     staged_files.iter().for_each(|fe| {
         staged_map.insert(fe.path.as_str(), fe);
     });
 
-    let found_files = all_files(root_path)?;
+    let found_files = file_entry::get_all(root_path)?;
 
     let unstaged_files: Vec<&PathBuf> = found_files
         .iter()
@@ -74,7 +70,7 @@ pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
         println!("Staged Files");
         staged_files
             .iter()
-            .for_each(|fe| match compare_file_entry(fe, root_path) {
+            .for_each(|fe| match file_entry::compare_to_disk(fe, root_path) {
                 Ok(cp) => {
                     let state = if cp { "" } else { "modified: " };
                     println!("\t{}{}", state, fe.path)

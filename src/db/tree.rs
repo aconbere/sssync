@@ -3,12 +3,16 @@ use rusqlite::Connection;
 
 use std::error::Error;
 
+use crate::models::tree_entry::TreeEntry;
+
 pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
         CREATE TABLE
             trees (
-                path TEXT NOT NULL, file_hash TEXT NOT NULL, commit_hash TEXT NOT NULL
+                path TEXT NOT NULL,
+                file_hash TEXT NOT NULL,
+                commit_hash TEXT NOT NULL
             )
         ",
         params![],
@@ -16,15 +20,17 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn insert(connection &Connection) -> Result<(), Box<dyn Error>> {
+pub fn insert(connection: &Connection, tree_entry: &TreeEntry) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
-        CREATE TABLE
-            trees (
-                path TEXT NOT NULL, file_hash TEXT NOT NULL, commit_hash TEXT NOT NULL
-            )
+        INSERT INTO trees (path, file_hash, commit_hash)
+        VALUES (?1, ?2, ?3, ?4)
         ",
-        params![],
+        params![
+            tree_entry.path,
+            tree_entry.file_hash,
+            tree_entry.commit_hash
+        ],
     )?;
     Ok(())
 }
