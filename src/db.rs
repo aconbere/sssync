@@ -25,8 +25,8 @@ pub fn init(connection: Connection) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
         CREATE TABLE
-            objects (
-                hash TEXT PRIMARY KEY, path TEXT NOT NULL
+            trees (
+                path TEXT NOT NULL, file_hash TEXT NOT NULL, commit_hash TEXT NOT NULL
             )
         ",
         params![],
