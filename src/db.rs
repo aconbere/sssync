@@ -12,10 +12,6 @@ pub fn db_path(path: &Path) -> PathBuf {
     path.join(DB_FILE_NAME)
 }
 
-pub fn has_db_file(path: &Path) -> bool {
-    path.join(DB_FILE_NAME).exists()
-}
-
 pub fn get_connection(root_path: &Path) -> Result<Connection, Box<dyn Error>> {
     println!("get_connection: {}", root_path.display());
     let store_path = store::store_path(root_path);
@@ -106,15 +102,5 @@ pub fn staging_insert(
             file_entry.modified_time_seconds
         ],
     )?;
-    Ok(())
-}
-
-pub fn staging_insert_batch(
-    connection: &Connection,
-    file_entries: Vec<FileEntry>,
-) -> Result<(), Box<dyn Error>> {
-    for file_entry in file_entries {
-        staging_insert(connection, &file_entry)?;
-    }
     Ok(())
 }

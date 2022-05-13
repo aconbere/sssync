@@ -94,3 +94,8 @@ pub fn lstat(path: &Path) -> std::io::Result<libc::stat> {
         _ => Err(errno().into()),
     }
 }
+
+pub fn compare_file_entry(fe: &FileEntry, root_path: &Path) -> Result<bool, Box<dyn Error>> {
+    let meta = lstat(Path::new(&root_path.join(&fe.path)))?;
+    Ok(fe.size_bytes != meta.st_size || fe.modified_time_seconds != meta.st_mtime)
+}

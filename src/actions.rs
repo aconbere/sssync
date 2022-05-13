@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use rusqlite::Connection;
 
 use crate::db;
-use crate::file_entry::{all_files, FileEntry};
+use crate::file_entry::{all_files, compare_file_entry, FileEntry};
 use crate::store;
 
 pub fn add(
@@ -41,10 +41,10 @@ pub fn add(
 pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
     let staged_files = db::staging_get_all(connection)?;
 
-    let mut staged_set: HashSet<&str> = HashSet::new();
+    let mut staged_map: HashMap<&str, &FileEntry> = HashMap::new();
 
     staged_files.iter().for_each(|fe| {
-        staged_set.insert(fe.path.as_str());
+        staged_map.insert(fe.path.as_str(), fe);
     });
 
     let found_files = all_files(root_path)?;
@@ -52,7 +52,7 @@ pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
     let unstaged_files: Vec<&PathBuf> = found_files
         .iter()
         .filter(|path| match path.to_str() {
-            Some(s) => !staged_set.contains(s),
+            Some(s) => !staged_map.contains_key(s),
             None => false,
         })
         .collect();
@@ -61,7 +61,15 @@ pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
 
     if staged_files.len() > 0 {
         println!("Staged Files");
-        staged_files.iter().for_each(|fe| println!("\t{}", fe.path));
+        staged_files
+            .iter()
+            .for_each(|fe| match compare_file_entry(fe, root_path) {
+                Ok(cp) => {
+                    let state = if cp { "" } else { "modified: " };
+                    println!("\t{}{}", state, fe.path)
+                }
+                Err(_) => {}
+            });
     }
 
     if unstaged_files.len() > 0 {
