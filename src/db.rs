@@ -49,7 +49,10 @@ pub fn init(connection: Connection) -> Result<(), Box<dyn Error>> {
         "
         CREATE TABLE
             commits (
-                hash TEXT PRIMARY KEY
+                hash TEXT PRIMARY KEY,
+                comment TEXT NOT NULL,
+                author TEXT NOT NULL,
+                created_unix_timestamp INTEGER NOT NULL,
             )
         ",
         params![],
@@ -100,6 +103,24 @@ pub fn staging_insert(
             file_entry.path,
             file_entry.size_bytes,
             file_entry.modified_time_seconds
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn commit_new(connection: &Connection) -> Result<(), Box<dyn Error>> {
+    connection.execute(
+        "
+        INSERT INTO
+            commit (hash, comment, author, created_unix_timestamp)
+        VALUES
+            (?1, ?2, ?3, ?4)
+        ",
+        params![
+            "asdfadfadf",
+            "Tax Time",
+            "anders@conbere.org<Anders Conbere>",
+            12312,
         ],
     )?;
     Ok(())
