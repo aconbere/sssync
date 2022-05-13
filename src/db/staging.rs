@@ -70,3 +70,14 @@ pub fn get_all(connection: &Connection) -> Result<Vec<FileEntry>, Box<dyn Error>
 
     Ok(entries)
 }
+
+pub fn delete(connection: &Connection) -> Result<(), Box<dyn Error>> {
+    connection.execute(
+        "
+            DELETE FROM staging
+        ",
+        params![],
+    )?;
+
+    Ok(())
+}

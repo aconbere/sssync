@@ -47,6 +47,16 @@ pub fn add(
 }
 
 pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
+    let head = db::reference::get_head(connection)?;
+    println!("WTF");
+
+    match head {
+        Some(head_commit) => {
+            println!("Current Head: {}", head_commit.hash);
+        }
+        None => {}
+    }
+
     let staged_files = db::staging::get_all(connection)?;
 
     let mut staged_map: HashMap<&str, &file_entry::FileEntry> = HashMap::new();
