@@ -4,7 +4,7 @@ use std::io;
 use std::io::Write;
 use std::path::Path;
 
-use base64ct::{Base64, Encoding};
+use hex;
 use xxhash_rust::xxh3::Xxh3;
 
 fn u128_to_byte_array(n: u128) -> [u8; 16] {
@@ -45,5 +45,5 @@ pub fn hash_file(path: &Path) -> Result<String, Box<dyn Error>> {
     let mut file = File::open(&path)?;
     io::copy(&mut file, &mut hasher)?;
     let hash = hasher.hasher.digest128();
-    Ok(Base64::encode_string(&u128_to_byte_array(hash)))
+    Ok(hex::encode(&u128_to_byte_array(hash)))
 }

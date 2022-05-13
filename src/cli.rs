@@ -3,13 +3,13 @@ use std::error::Error;
 use std::fs;
 use std::path::Path;
 
-use crate::actions::{add, init, status};
+use crate::actions::{add, commit, init, status};
 use crate::db::get_connection;
 use crate::store::get_root_path;
 
 #[derive(Subcommand, Debug)]
 pub enum Action {
-    Commit,
+    Commit { path: String },
     Status { path: String },
     Init { path: String },
     Add { path: String },
@@ -29,7 +29,18 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
 
     match &cli.action {
-        Action::Commit => Ok(()),
+        Action::Commit { path } => {
+            let path = fs::canonicalize(path)?;
+            match get_root_path(&path) {
+                Some(root_path) => {
+                    let connection = get_connection(root_path)?;
+                    commit(&connection, &path)
+                }
+                None => {
+                    return Err(format!("not in a sssync'd directory: {}", path.display()).into())
+                }
+            }
+        }
         Action::Status { path } => {
             let path = fs::canonicalize(path)?;
             match get_root_path(&path) {

@@ -2,21 +2,29 @@ use crate::hash::hash_file;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
+use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
 pub struct FileEntry {
     pub path: String,
     pub hash: String,
+    pub size_bytes: i64,
+    pub modified_time_seconds: i64,
 }
 
 impl FileEntry {
     pub fn hash(full_path: &Path, relative_path: &Path) -> Result<Self, Box<dyn Error>> {
         println!("hash: {}", full_path.display());
+
+        let meta = lstat(full_path)?;
+
         match hash_file(full_path) {
             Ok(hash) => match relative_path.to_str() {
                 Some(relative_path_str) => Ok(Self {
                     path: relative_path_str.to_string(),
                     hash: hash,
+                    size_bytes: meta.st_size,
+                    modified_time_seconds: meta.st_mtime,
                 }),
                 None => Err(format!("Invalid path: {}", relative_path.display()).into()),
             },
@@ -70,4 +78,19 @@ fn all_files_inner(
         }
     }
     Ok(results)
+}
+
+use errno::errno;
+use std::ffi::CString;
+
+pub fn lstat(path: &Path) -> std::io::Result<libc::stat> {
+    let mut stat: libc::stat = unsafe { std::mem::zeroed() };
+
+    let c_path = CString::new(path.as_os_str().as_bytes())?;
+    let c_errno = unsafe { libc::lstat(c_path.as_ptr(), &mut stat) };
+
+    match c_errno {
+        0 => Ok(stat),
+        _ => Err(errno().into()),
+    }
 }

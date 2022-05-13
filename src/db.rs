@@ -27,26 +27,56 @@ pub fn get_connection(root_path: &Path) -> Result<Connection, Box<dyn Error>> {
 
 pub fn init(connection: Connection) -> Result<(), Box<dyn Error>> {
     connection.execute(
-        "CREATE TABLE objects (hash TEXT primary key, path TEXT not null)",
+        "
+        CREATE TABLE
+            objects (
+                hash TEXT PRIMARY KEY, path TEXT NOT NULL
+            )
+        ",
         params![],
     )?;
 
     connection.execute(
-        "CREATE TABLE staging (hash TEXT primary key, path TEXT not null)",
+        "
+        CREATE TABLE
+            staging (
+                hash TEXT PRIMARY KEY,
+                path TEXT NOT NULL,
+                size_bytes INTEGER NOT NULL,
+                modified_time_seconds INTEGER NOT NULL
+            )
+        ",
         params![],
     )?;
 
-    connection.execute("CREATE TABLE commits (hash TEXT primary key)", params![])?;
+    connection.execute(
+        "
+        CREATE TABLE
+            commits (
+                hash TEXT PRIMARY KEY
+            )
+        ",
+        params![],
+    )?;
     Ok(())
 }
 
 pub fn staging_get_all(connection: &Connection) -> Result<Vec<FileEntry>, Box<dyn Error>> {
-    let mut stmt = connection.prepare("SELECT hash, path FROM staging")?;
+    let mut stmt = connection.prepare(
+        "
+            SELECT
+                hash, path, size_bytes, modified_time_seconds
+            FROM
+                staging
+        ",
+    )?;
     let entries: Vec<FileEntry> = stmt
         .query_map([], |row| {
             Ok(FileEntry {
                 hash: row.get(0)?,
                 path: row.get(1)?,
+                size_bytes: row.get(2)?,
+                modified_time_seconds: row.get(3)?,
             })
         })?
         .filter_map(|fe| fe.ok())
@@ -60,8 +90,21 @@ pub fn staging_insert(
     file_entry: &FileEntry,
 ) -> Result<(), Box<dyn Error>> {
     connection.execute(
-        "INSERT INTO staging (hash, path) VALUES (?1, ?2) ON CONFLICT (hash) DO UPDATE SET path = excluded.path",
-        params![file_entry.hash, file_entry.path],
+        "
+        INSERT INTO
+            staging (hash, path, size_bytes, modified_time_seconds)
+        VALUES
+            (?1, ?2, ?3, ?4)
+        ON CONFLICT (hash)
+        DO UPDATE SET
+            path = excluded.path
+        ",
+        params![
+            file_entry.hash,
+            file_entry.path,
+            file_entry.size_bytes,
+            file_entry.modified_time_seconds
+        ],
     )?;
     Ok(())
 }

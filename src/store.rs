@@ -9,8 +9,16 @@ pub fn has_store_dir(path: &Path) -> bool {
     path.join(STORE_DIR).exists()
 }
 
-pub fn store_path(p: &Path) -> PathBuf {
-    p.join(STORE_DIR)
+pub fn store_path(root_path: &Path) -> PathBuf {
+    root_path.join(STORE_DIR)
+}
+
+pub fn object_path(root_path: &Path, hash: String) -> PathBuf {
+    let mut p = PathBuf::new();
+    p.push(STORE_DIR);
+    p.push("objects");
+    p.push(hash);
+    root_path.join(p)
 }
 
 pub fn get_root_path(path: &Path) -> Option<&Path> {

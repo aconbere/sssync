@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::error::Error;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use rusqlite::Connection;
@@ -37,7 +38,7 @@ pub fn add(
     Ok(())
 }
 
-pub fn status(connection: &Connection, path: &Path) -> Result<(), Box<dyn Error>> {
+pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
     let staged_files = db::staging_get_all(connection)?;
 
     let mut staged_set: HashSet<&str> = HashSet::new();
@@ -46,7 +47,7 @@ pub fn status(connection: &Connection, path: &Path) -> Result<(), Box<dyn Error>
         staged_set.insert(fe.path.as_str());
     });
 
-    let found_files = all_files(path)?;
+    let found_files = all_files(root_path)?;
 
     let unstaged_files: Vec<&PathBuf> = found_files
         .iter()
@@ -74,12 +75,29 @@ pub fn status(connection: &Connection, path: &Path) -> Result<(), Box<dyn Error>
     Ok(())
 }
 
-pub fn init(path: &Path) -> Result<(), Box<dyn Error>> {
-    println!("init: {}", path.display());
-    store::init(&path)?;
+pub fn init(root_path: &Path) -> Result<(), Box<dyn Error>> {
+    println!("init: {}", root_path.display());
+    store::init(&root_path)?;
 
-    let connection = db::get_connection(&path)?;
-    println!("found connection: {}", path.display());
+    let connection = db::get_connection(&root_path)?;
+    println!("found connection: {}", root_path.display());
     db::init(connection)?;
+    Ok(())
+}
+
+pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
+    let staged_files = db::staging_get_all(connection)?;
+
+    for file in staged_files {
+        fs::copy(
+            root_path.join(file.path),
+            store::object_path(root_path, file.hash),
+        )?;
+    }
+    // for every staged file we want to copy them to the object store
+    // with the filename representing their hash
+    //
+    // then we want to hash all the hashes and write that into a commit
+    // in the db
     Ok(())
 }
