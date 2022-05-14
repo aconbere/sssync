@@ -1,30 +1,44 @@
 use std::collections::HashSet;
 use std::error::Error;
+use std::ffi::CString;
 use std::fs;
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
+use errno::errno;
+
 use crate::hash::{hash_file, hash_string};
+use crate::models::file::File;
 use crate::store;
 
 pub struct FileEntry {
     pub path: String,
-    pub hash: String,
+    pub file_hash: String,
     pub size_bytes: i64,
     pub modified_time_seconds: i64,
 }
 
+impl File for FileEntry {
+    fn path_str(&self) -> &str {
+        &self.path
+    }
+    fn path(&self) -> PathBuf {
+        PathBuf::from(&self.path)
+    }
+    fn file_hash(&self) -> &str {
+        &self.file_hash
+    }
+}
+
 impl FileEntry {
     pub fn hash(full_path: &Path, relative_path: &Path) -> Result<Self, Box<dyn Error>> {
-        println!("hash: {}", full_path.display());
-
         let meta = lstat(full_path)?;
 
         match hash_file(full_path) {
-            Ok(hash) => match relative_path.to_str() {
+            Ok(file_hash) => match relative_path.to_str() {
                 Some(relative_path_str) => Ok(Self {
                     path: relative_path_str.to_string(),
-                    hash: hash,
+                    file_hash: file_hash,
                     size_bytes: meta.st_size,
                     modified_time_seconds: meta.st_mtime,
                 }),
@@ -82,9 +96,6 @@ fn get_all_inner(
     Ok(results)
 }
 
-use errno::errno;
-use std::ffi::CString;
-
 pub fn lstat(path: &Path) -> std::io::Result<libc::stat> {
     let mut stat: libc::stat = unsafe { std::mem::zeroed() };
 
@@ -97,7 +108,7 @@ pub fn lstat(path: &Path) -> std::io::Result<libc::stat> {
     }
 }
 
-pub fn compare_to_disk(fe: &FileEntry, root_path: &Path) -> Result<bool, Box<dyn Error>> {
+pub fn compare_file_meta(fe: &FileEntry, root_path: &Path) -> Result<bool, Box<dyn Error>> {
     let meta = lstat(Path::new(&root_path.join(&fe.path)))?;
     Ok(fe.size_bytes != meta.st_size || fe.modified_time_seconds != meta.st_mtime)
 }
@@ -106,11 +117,19 @@ pub fn copy_if_not_present(file_entry: &FileEntry, root_path: &Path) -> Result<(
     let full_path = root_path.join(&file_entry.path);
 
     if !full_path.exists() {
-        fs::copy(full_path, store::object_path(root_path, &file_entry.hash))?;
+        fs::copy(
+            full_path,
+            store::object_path(root_path, &file_entry.file_hash),
+        )?;
     }
     Ok(())
 }
 
 pub fn hash_all(file_entries: &Vec<FileEntry>) -> String {
-    hash_string(file_entries.iter().map(|fe| fe.hash.as_str()).collect())
+    hash_string(
+        file_entries
+            .iter()
+            .map(|fe| fe.file_hash.as_str())
+            .collect(),
+    )
 }

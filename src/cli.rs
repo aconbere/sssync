@@ -3,7 +3,7 @@ use std::error::Error;
 use std::fs;
 use std::path::Path;
 
-use crate::actions::{add, checkout, commit, init, log, reset, status};
+use crate::actions::{add, checkout, commit, init, log, reset, status, tree};
 use crate::db::get_connection;
 use crate::store::get_root_path;
 
@@ -16,9 +16,10 @@ pub enum Action {
     Status { path: String },
     Init { path: String },
     Add { path: String },
-    Fetch { remote: String },
-    Push { remote: String },
-    Diff { remote: String },
+    Tree { path: String, hash: String },
+    //Fetch { path: String, remote: String },
+    //Push { path: String, remote: String },
+    //Diff { path: String, remote: String },
 }
 
 #[derive(Parser, Debug)]
@@ -121,8 +122,21 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 }
             }
         }
-        Action::Fetch { remote } => Ok(()),
-        Action::Push { remote } => Ok(()),
-        Action::Diff { remote } => Ok(()),
+        Action::Tree { path, hash } => {
+            println!("Action::Reset: {}", path);
+            let path = fs::canonicalize(path)?;
+            match get_root_path(&path) {
+                Some(root_path) => {
+                    let connection = get_connection(root_path)?;
+                    tree::tree(&connection, hash)
+                }
+                None => {
+                    return Err(format!("not in a sssync'd directory: {}", path.display()).into())
+                }
+            }
+        }
+        //Action::Fetch { remote } => Ok(()),
+        //Action::Push { remote } => Ok(()),
+        //Action::Diff { remote } => Ok(()),
     }
 }

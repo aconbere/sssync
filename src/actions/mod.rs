@@ -5,3 +5,4 @@ pub mod init;
 pub mod log;
 pub mod reset;
 pub mod status;
+pub mod tree;

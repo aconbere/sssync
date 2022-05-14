@@ -57,7 +57,7 @@ pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
         println!("Staged Files");
         staged_files
             .iter()
-            .for_each(|fe| match file_entry::compare_to_disk(fe, root_path) {
+            .for_each(|fe| match file_entry::compare_file_meta(fe, root_path) {
                 Ok(cp) => {
                     let state = if !cp { "" } else { "modified: " };
                     println!("\t{}{}", state, fe.path)

@@ -45,7 +45,7 @@ pub fn add(
         for file in files {
             if !contains_path(&tracked_map, &file) {
                 let file_entry = file_entry::FileEntry::hash(&root_path.join(&file), &file)?;
-                println!("File: {}::{}", file_entry.path, file_entry.hash);
+                println!("File: {}::{}", file_entry.path, file_entry.file_hash);
 
                 file_entry::copy_if_not_present(&file_entry, root_path)?;
                 db::staging::insert(connection, &file_entry)?;
@@ -58,10 +58,10 @@ pub fn add(
     if full_path.is_file() {
         println!("adding file: {}", rel_path.display());
         let file_entry = file_entry::FileEntry::hash(full_path, rel_path)?;
-        println!("File: {}::{}", file_entry.path, file_entry.hash);
+        println!("File: {}::{}", file_entry.path, file_entry.file_hash);
         fs::copy(
             root_path.join(&file_entry.path),
-            store::object_path(root_path, &file_entry.hash),
+            store::object_path(root_path, &file_entry.file_hash),
         )?;
         db::staging::insert(connection, &file_entry)?;
         return Ok(());

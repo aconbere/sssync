@@ -37,7 +37,7 @@ pub fn insert(connection: &Connection, file_entry: &FileEntry) -> Result<(), Box
             modified_time_seconds = excluded.modified_time_seconds
         ",
         params![
-            file_entry.hash,
+            file_entry.file_hash,
             file_entry.path,
             file_entry.size_bytes,
             file_entry.modified_time_seconds
@@ -51,7 +51,7 @@ pub fn get_all(connection: &Connection) -> Result<Vec<FileEntry>, Box<dyn Error>
     let mut stmt = connection.prepare(
         "
             SELECT
-                hash, path, size_bytes, modified_time_seconds
+                file_hash, path, size_bytes, modified_time_seconds
             FROM
                 staging
         ",
@@ -60,7 +60,7 @@ pub fn get_all(connection: &Connection) -> Result<Vec<FileEntry>, Box<dyn Error>
     let entries: Vec<FileEntry> = stmt
         .query_map([], |row| {
             Ok(FileEntry {
-                hash: row.get(0)?,
+                file_hash: row.get(0)?,
                 path: row.get(1)?,
                 size_bytes: row.get(2)?,
                 modified_time_seconds: row.get(3)?,

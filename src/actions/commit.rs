@@ -9,6 +9,10 @@ use crate::models::file_entry;
 use crate::models::tree_entry;
 
 pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
+    /* It's possible that at this point the user has no commits in the
+     * repository yet. We'll collapse that case down by returning
+     * the empty vector
+     */
     let head = db::reference::get_head(connection)?;
 
     let tracked_files = match head {
