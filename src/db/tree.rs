@@ -44,3 +44,27 @@ pub fn insert_batch(
     }
     Ok(())
 }
+
+pub fn get_tree(connection: &Connection, hash: &str) -> Result<Vec<TreeEntry>, rusqlite::Error> {
+    let mut statement = connection.prepare(
+        "SELECT
+            path, file_hash, commit_hash
+        FROM
+            trees
+        WHERE
+            commit_hash = ?1
+        ",
+    )?;
+
+    statement
+        .query_map(params![hash], |row| {
+            Ok(TreeEntry {
+                path: row.get(0)?,
+                file_hash: row.get(1)?,
+                commit_hash: row.get(2)?,
+            })
+        })
+        .into_iter()
+        .flat_map(|e| e)
+        .collect()
+}

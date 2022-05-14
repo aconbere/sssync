@@ -9,6 +9,17 @@ use crate::models::file_entry;
 use crate::models::tree_entry;
 
 pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
+    let head = db::reference::get_head(connection)?;
+
+    let tracked_files = match head {
+        Some(head_commit) => {
+            println!("Current Head: {}", head_commit.hash);
+            db::tree::get_tree(connection, &head_commit.hash)?
+        }
+        None => Vec::new(),
+    };
+    // Need to join staged and tracked files
+
     let staged_files = db::staging::get_all(connection)?;
 
     // This is wrong; should be the concatenation of all

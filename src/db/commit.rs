@@ -60,6 +60,7 @@ pub fn get(connection: &Connection, hash: &str) -> Result<Commit, rusqlite::Erro
         ",
         params![hash],
         |row| {
+            println!("wtf");
             Ok(Commit {
                 hash: row.get(0)?,
                 comment: row.get(1)?,
@@ -68,4 +69,27 @@ pub fn get(connection: &Connection, hash: &str) -> Result<Commit, rusqlite::Erro
             })
         },
     )
+}
+
+pub fn get_all(connection: &Connection) -> Result<Vec<Commit>, rusqlite::Error> {
+    let mut statement = connection.prepare(
+        "SELECT
+            hash, comment, author, created_unix_timestamp
+        FROM
+            commits
+        ",
+    )?;
+
+    statement
+        .query_map(params![], |row| {
+            Ok(Commit {
+                hash: row.get(0)?,
+                comment: row.get(1)?,
+                author: row.get(2)?,
+                created_unix_timestamp: row.get(3)?,
+            })
+        })
+        .into_iter()
+        .flat_map(|e| e)
+        .collect()
 }
