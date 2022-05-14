@@ -12,6 +12,7 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
             trees (
                 path TEXT NOT NULL,
                 file_hash TEXT NOT NULL,
+                size_bytes INTEGER NOT NULL,
                 commit_hash TEXT NOT NULL
             )
         ",
@@ -23,12 +24,13 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
 pub fn insert(connection: &Connection, tree_entry: &TreeEntry) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
-        INSERT INTO trees (path, file_hash, commit_hash)
-        VALUES (?1, ?2, ?3)
+        INSERT INTO trees (path, file_hash, size_bytes, commit_hash)
+        VALUES (?1, ?2, ?3, ?4)
         ",
         params![
             tree_entry.path,
             tree_entry.file_hash,
+            tree_entry.size_bytes,
             tree_entry.commit_hash
         ],
     )?;
@@ -48,7 +50,7 @@ pub fn insert_batch(
 pub fn get_tree(connection: &Connection, hash: &str) -> Result<Vec<TreeEntry>, rusqlite::Error> {
     let mut statement = connection.prepare(
         "SELECT
-            path, file_hash, commit_hash
+            path, file_hash, size_bytes, commit_hash, 
         FROM
             trees
         WHERE
@@ -61,7 +63,8 @@ pub fn get_tree(connection: &Connection, hash: &str) -> Result<Vec<TreeEntry>, r
             Ok(TreeEntry {
                 path: row.get(0)?,
                 file_hash: row.get(1)?,
-                commit_hash: row.get(2)?,
+                size_bytes: row.get(2)?,
+                commit_hash: row.get(3)?,
             })
         })
         .into_iter()

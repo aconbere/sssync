@@ -8,26 +8,14 @@ use std::path::{Path, PathBuf};
 use errno::errno;
 
 use crate::hash::{hash_file, hash_string};
-use crate::models::file::File;
 use crate::store;
 
 pub struct FileEntry {
     pub path: String,
     pub file_hash: String,
     pub size_bytes: i64,
-    pub modified_time_seconds: i64,
-}
 
-impl File for FileEntry {
-    fn path_str(&self) -> &str {
-        &self.path
-    }
-    fn path(&self) -> PathBuf {
-        PathBuf::from(&self.path)
-    }
-    fn file_hash(&self) -> &str {
-        &self.file_hash
-    }
+    pub modified_time_seconds: i64,
 }
 
 impl FileEntry {
