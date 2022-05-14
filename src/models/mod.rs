@@ -1,3 +1,3 @@
 pub mod commit;
-pub mod file_entry;
-pub mod tree_entry;
+pub mod staged_file;
+pub mod tree_file;

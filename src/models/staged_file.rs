@@ -10,7 +10,7 @@ use errno::errno;
 use crate::hash::{hash_file, hash_string};
 use crate::store;
 
-pub struct FileEntry {
+pub struct StagedFile {
     pub path: String,
     pub file_hash: String,
     pub size_bytes: i64,
@@ -18,7 +18,7 @@ pub struct FileEntry {
     pub modified_time_seconds: i64,
 }
 
-impl FileEntry {
+impl StagedFile {
     pub fn hash(full_path: &Path, relative_path: &Path) -> Result<Self, Box<dyn Error>> {
         let meta = lstat(full_path)?;
 
@@ -96,12 +96,15 @@ pub fn lstat(path: &Path) -> std::io::Result<libc::stat> {
     }
 }
 
-pub fn compare_file_meta(fe: &FileEntry, root_path: &Path) -> Result<bool, Box<dyn Error>> {
+pub fn compare_file_meta(fe: &StagedFile, root_path: &Path) -> Result<bool, Box<dyn Error>> {
     let meta = lstat(Path::new(&root_path.join(&fe.path)))?;
     Ok(fe.size_bytes != meta.st_size || fe.modified_time_seconds != meta.st_mtime)
 }
 
-pub fn copy_if_not_present(file_entry: &FileEntry, root_path: &Path) -> Result<(), Box<dyn Error>> {
+pub fn copy_if_not_present(
+    file_entry: &StagedFile,
+    root_path: &Path,
+) -> Result<(), Box<dyn Error>> {
     let full_path = root_path.join(&file_entry.path);
 
     if !full_path.exists() {
@@ -113,7 +116,7 @@ pub fn copy_if_not_present(file_entry: &FileEntry, root_path: &Path) -> Result<(
     Ok(())
 }
 
-pub fn hash_all(file_entries: &Vec<FileEntry>) -> String {
+pub fn hash_all(file_entries: &Vec<StagedFile>) -> String {
     hash_string(
         file_entries
             .iter()

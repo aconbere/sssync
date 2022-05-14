@@ -5,8 +5,8 @@ use rusqlite::Connection;
 
 use crate::db;
 use crate::models::commit;
-use crate::models::file_entry;
-use crate::models::tree_entry;
+use crate::models::staged_file;
+use crate::models::tree_file;
 
 pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
     /* It's possible that at this point the user has no commits in the
@@ -29,7 +29,7 @@ pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
     // This is wrong; should be the concatenation of all
     // staged files overlayed with the files in the
     // current tree;
-    let hash = file_entry::hash_all(&staged_files);
+    let hash = staged_file::hash_all(&staged_files);
     let commit = commit::new(&hash, "", "")?;
 
     match db::commit::insert(connection, &commit) {
@@ -40,9 +40,9 @@ pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
         Ok(()) => {}
     }
 
-    let tree_entries: Vec<tree_entry::TreeEntry> = staged_files
+    let tree_entries: Vec<tree_file::TreeFile> = staged_files
         .iter()
-        .map(|fe| tree_entry::from_file_entry(&commit.hash, fe))
+        .map(|fe| tree_file::from_staged_file(&commit.hash, fe))
         .collect();
 
     db::tree::insert_batch(connection, tree_entries)?;

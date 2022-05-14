@@ -5,8 +5,8 @@ use std::path::{Path, PathBuf};
 use rusqlite::Connection;
 
 use crate::db;
-use crate::models::file_entry;
-use crate::models::tree_entry;
+use crate::models::staged_file;
+use crate::models::tree_file;
 
 pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
     let head = db::reference::get_head(connection)?;
@@ -21,7 +21,7 @@ pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
         None => Vec::new(),
     };
 
-    let mut tracked_map: HashMap<&str, &tree_entry::TreeEntry> = HashMap::new();
+    let mut tracked_map: HashMap<&str, &tree_file::TreeFile> = HashMap::new();
     tracked_files.iter().for_each(|tf| {
         tracked_map.insert(tf.path.as_str(), tf);
     });
@@ -30,7 +30,7 @@ pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
      */
     let staged_files = db::staging::get_all(connection)?;
 
-    let mut staged_map: HashMap<&str, &file_entry::FileEntry> = HashMap::new();
+    let mut staged_map: HashMap<&str, &staged_file::StagedFile> = HashMap::new();
 
     staged_files.iter().for_each(|fe| {
         staged_map.insert(fe.path.as_str(), fe);
@@ -41,7 +41,7 @@ pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
      * Diff these files with the staged files and
      * tracked files to fund untracked files.
      */
-    let found_files = file_entry::get_all(root_path)?;
+    let found_files = staged_file::get_all(root_path)?;
 
     let unstaged_files: Vec<&PathBuf> = found_files
         .iter()
@@ -57,7 +57,7 @@ pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
         println!("Staged Files");
         staged_files
             .iter()
-            .for_each(|fe| match file_entry::compare_file_meta(fe, root_path) {
+            .for_each(|fe| match staged_file::compare_file_meta(fe, root_path) {
                 Ok(cp) => {
                     let state = if !cp { "" } else { "modified: " };
                     println!("\t{}{}", state, fe.path)

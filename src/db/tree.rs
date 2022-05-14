@@ -3,7 +3,7 @@ use rusqlite::Connection;
 
 use std::error::Error;
 
-use crate::models::tree_entry::TreeEntry;
+use crate::models::tree_file::TreeFile;
 
 pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     connection.execute(
@@ -21,7 +21,7 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn insert(connection: &Connection, tree_entry: &TreeEntry) -> Result<(), Box<dyn Error>> {
+pub fn insert(connection: &Connection, tree_entry: &TreeFile) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
         INSERT INTO trees (path, file_hash, size_bytes, commit_hash)
@@ -39,7 +39,7 @@ pub fn insert(connection: &Connection, tree_entry: &TreeEntry) -> Result<(), Box
 
 pub fn insert_batch(
     connection: &Connection,
-    tree_entries: Vec<TreeEntry>,
+    tree_entries: Vec<TreeFile>,
 ) -> Result<(), Box<dyn Error>> {
     for tree_entry in tree_entries {
         insert(connection, &tree_entry)?;
@@ -47,7 +47,7 @@ pub fn insert_batch(
     Ok(())
 }
 
-pub fn get_tree(connection: &Connection, hash: &str) -> Result<Vec<TreeEntry>, rusqlite::Error> {
+pub fn get_tree(connection: &Connection, hash: &str) -> Result<Vec<TreeFile>, rusqlite::Error> {
     let mut statement = connection.prepare(
         "SELECT
             path, file_hash, size_bytes, commit_hash, 
@@ -60,7 +60,7 @@ pub fn get_tree(connection: &Connection, hash: &str) -> Result<Vec<TreeEntry>, r
 
     statement
         .query_map(params![hash], |row| {
-            Ok(TreeEntry {
+            Ok(TreeFile {
                 path: row.get(0)?,
                 file_hash: row.get(1)?,
                 size_bytes: row.get(2)?,

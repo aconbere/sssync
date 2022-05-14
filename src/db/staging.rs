@@ -3,7 +3,7 @@ use rusqlite::Connection;
 
 use std::error::Error;
 
-use crate::models::file_entry::FileEntry;
+use crate::models::staged_file::StagedFile;
 
 pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     connection.execute(
@@ -22,7 +22,7 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn insert(connection: &Connection, file_entry: &FileEntry) -> Result<(), Box<dyn Error>> {
+pub fn insert(connection: &Connection, file_entry: &StagedFile) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
         INSERT INTO
@@ -47,7 +47,7 @@ pub fn insert(connection: &Connection, file_entry: &FileEntry) -> Result<(), Box
     Ok(())
 }
 
-pub fn get_all(connection: &Connection) -> Result<Vec<FileEntry>, Box<dyn Error>> {
+pub fn get_all(connection: &Connection) -> Result<Vec<StagedFile>, Box<dyn Error>> {
     let mut stmt = connection.prepare(
         "
             SELECT
@@ -57,9 +57,9 @@ pub fn get_all(connection: &Connection) -> Result<Vec<FileEntry>, Box<dyn Error>
         ",
     )?;
 
-    let entries: Vec<FileEntry> = stmt
+    let entries: Vec<StagedFile> = stmt
         .query_map([], |row| {
-            Ok(FileEntry {
+            Ok(StagedFile {
                 file_hash: row.get(0)?,
                 path: row.get(1)?,
                 size_bytes: row.get(2)?,

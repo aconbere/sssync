@@ -1,6 +1,6 @@
-use crate::models::file_entry::FileEntry;
+use crate::models::staged_file::StagedFile;
 
-pub struct TreeEntry {
+pub struct TreeFile {
     pub path: String,
     pub file_hash: String,
     pub size_bytes: i64,
@@ -8,8 +8,8 @@ pub struct TreeEntry {
     pub commit_hash: String,
 }
 
-pub fn new(path: &str, file_hash: &str, size_bytes: i64, commit_hash: &str) -> TreeEntry {
-    TreeEntry {
+pub fn new(path: &str, file_hash: &str, size_bytes: i64, commit_hash: &str) -> TreeFile {
+    TreeFile {
         path: path.to_string(),
         file_hash: file_hash.to_string(),
         size_bytes: size_bytes,
@@ -17,7 +17,7 @@ pub fn new(path: &str, file_hash: &str, size_bytes: i64, commit_hash: &str) -> T
     }
 }
 
-pub fn from_file_entry(commit_hash: &str, file_entry: &FileEntry) -> TreeEntry {
+pub fn from_staged_file(commit_hash: &str, file_entry: &StagedFile) -> TreeFile {
     new(
         &file_entry.path,
         &file_entry.file_hash,
