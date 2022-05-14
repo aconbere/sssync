@@ -10,10 +10,21 @@ use errno::errno;
 use crate::hash::hash_string;
 use crate::store;
 
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub struct File {
     pub path: String,
     pub file_hash: String,
     pub size_bytes: i64,
+}
+
+impl File {
+    pub fn new(path: &str, file_hash: &str, size_bytes: i64) -> Self {
+        Self {
+            path: path.to_string(),
+            file_hash: file_hash.to_string(),
+            size_bytes: size_bytes,
+        }
+    }
 }
 
 pub fn hash_all(files: &Vec<File>) -> String {

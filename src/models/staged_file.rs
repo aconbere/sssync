@@ -16,18 +16,17 @@ impl StagedFile {
     pub fn new(full_path: &Path, relative_path: &Path) -> Result<Self, Box<dyn Error>> {
         let meta = lstat(full_path)?;
 
-        match hash_file(full_path) {
-            Ok(file_hash) => match relative_path.to_str() {
-                Some(relative_path_str) => Ok(Self {
-                    path: relative_path_str.to_string(),
-                    file_hash: file_hash,
-                    size_bytes: meta.st_size,
-                    modified_time_seconds: meta.st_mtime,
-                }),
-                None => Err(format!("Invalid path: {}", relative_path.display()).into()),
-            },
-            Err(e) => Err(e.into()),
-        }
+        let file_hash = hash_file(full_path)?;
+        let relative_path_str = relative_path
+            .to_str()
+            .ok_or(format!("Invalid path: {}", relative_path.display()))?;
+
+        Ok(Self {
+            path: relative_path_str.to_string(),
+            file_hash: file_hash,
+            size_bytes: meta.st_size,
+            modified_time_seconds: meta.st_mtime,
+        })
     }
 
     pub fn to_file(&self) -> File {
