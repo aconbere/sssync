@@ -4,8 +4,8 @@ use std::path::Path;
 use rusqlite::Connection;
 
 use crate::db;
-use crate::models::commit;
-use crate::models::staged_file;
+use crate::models::commit::Commit;
+use crate::models::file;
 use crate::models::tree_file;
 
 pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
@@ -29,8 +29,8 @@ pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
     // This is wrong; should be the concatenation of all
     // staged files overlayed with the files in the
     // current tree;
-    let hash = staged_file::hash_all(&staged_files);
-    let commit = commit::new(&hash, "", "")?;
+    let hash = file::hash_all(&staged_files.iter().map(|s| s.to_file()).collect());
+    let commit = Commit::new(&hash, "", "")?;
 
     match db::commit::insert(connection, &commit) {
         Err(_) => {

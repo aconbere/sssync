@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use rusqlite::Connection;
 
 use crate::db;
+use crate::models::file;
 use crate::models::staged_file;
 use crate::models::tree_file;
 
@@ -41,7 +42,7 @@ pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
      * Diff these files with the staged files and
      * tracked files to fund untracked files.
      */
-    let found_files = staged_file::get_all(root_path)?;
+    let found_files = file::get_all(root_path)?;
 
     let unstaged_files: Vec<&PathBuf> = found_files
         .iter()
