@@ -10,7 +10,7 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
         "
         CREATE TABLE
             staging (
-                hash TEXT PRIMARY KEY,
+                file_hash TEXT PRIMARY KEY,
                 path TEXT NOT NULL,
                 size_bytes INTEGER NOT NULL,
                 modified_time_seconds INTEGER NOT NULL
@@ -26,10 +26,10 @@ pub fn insert(connection: &Connection, file_entry: &StagedFile) -> Result<(), Bo
     connection.execute(
         "
         INSERT INTO
-            staging (hash, path, size_bytes, modified_time_seconds)
+            staging (file_hash, path, size_bytes, modified_time_seconds)
         VALUES
             (?1, ?2, ?3, ?4)
-        ON CONFLICT (hash)
+        ON CONFLICT (file_hash)
         DO UPDATE
         SET
             path = excluded.path,

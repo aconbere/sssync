@@ -60,7 +60,6 @@ pub fn get(connection: &Connection, hash: &str) -> Result<Commit, rusqlite::Erro
         ",
         params![hash],
         |row| {
-            println!("wtf");
             Ok(Commit {
                 hash: row.get(0)?,
                 comment: row.get(1)?,
