@@ -13,3 +13,4 @@ rusqlite = { version = "0.27.0", features = ["bundled"] }
 clap = { version = "3.1.18", features = ["derive"] }
 libc = "0.2"
 errno = "0.2"
+url = "2.2.2"

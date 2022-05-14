@@ -1,7 +1,7 @@
+use std::error::Error;
+
 use rusqlite::params;
 use rusqlite::Connection;
-
-use std::error::Error;
 
 use crate::models::tree_file::TreeFile;
 

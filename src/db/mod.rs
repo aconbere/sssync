@@ -6,6 +6,7 @@ use crate::store;
 
 pub mod commit;
 pub mod reference;
+pub mod remote;
 pub mod staging;
 pub mod tree;
 
@@ -27,5 +28,6 @@ pub fn init(connection: &Connection) -> Result<(), Box<dyn Error>> {
     tree::create_table(connection)?;
     commit::create_table(connection)?;
     reference::create_table(connection)?;
+    remote::create_table(connection)?;
     Ok(())
 }
