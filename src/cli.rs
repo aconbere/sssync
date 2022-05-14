@@ -9,6 +9,8 @@ use crate::store::get_root_path;
 
 #[derive(Subcommand, Debug)]
 pub enum Action {
+    Checkout { path: String, hash: String },
+    Log { path: String },
     Commit { path: String },
     Status { path: String },
     Init { path: String },
@@ -34,7 +36,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             match get_root_path(&path) {
                 Some(root_path) => {
                     let connection = get_connection(root_path)?;
-                    commit(&connection, &path)
+                    commit::commit(&connection, &path)
                 }
                 None => {
                     return Err(format!("not in a sssync'd directory: {}", path.display()).into())
@@ -46,7 +48,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             match get_root_path(&path) {
                 Some(root_path) => {
                     let connection = get_connection(root_path)?;
-                    status(&connection, &path)
+                    status::status(&connection, &path)
                 }
                 None => {
                     return Err(format!("not in a sssync'd directory: {}", path.display()).into())
@@ -58,7 +60,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             if !path.is_dir() {
                 return Err(format!("desintation {} must be a directory", path.display()).into());
             }
-            init(path)
+            init::init(path)
         }
         Action::Add { path } => {
             println!("Action::Add: {}", path);
@@ -68,13 +70,15 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                     println!("Root Path: {}", root_path.display());
                     let rel_path = path.strip_prefix(root_path)?;
                     let connection = get_connection(root_path)?;
-                    add(&connection, &path, &root_path, &rel_path)
+                    add::add(&connection, &path, &root_path, &rel_path)
                 }
                 None => {
                     return Err(format!("not in a sssync'd directory: {}", path.display()).into())
                 }
             }
         }
+        Action::Log { path } => Ok(()),
+        Action::Checkout { path, hash } => Ok(()),
         Action::Fetch { remote } => Ok(()),
         Action::Push { remote } => Ok(()),
         Action::Diff { remote } => Ok(()),
