@@ -3,6 +3,7 @@ pub mod checkout;
 pub mod commit;
 pub mod init;
 pub mod log;
+pub mod push;
 pub mod remote;
 pub mod reset;
 pub mod status;

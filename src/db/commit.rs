@@ -48,7 +48,6 @@ pub fn insert(connection: &Connection, commit: &Commit) -> Result<(), Box<dyn Er
 }
 
 pub fn get(connection: &Connection, hash: &str) -> Result<Commit, rusqlite::Error> {
-    println!("getting commit: {}", hash);
     connection.query_row(
         "
         SELECT

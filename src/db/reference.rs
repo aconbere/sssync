@@ -53,7 +53,6 @@ pub fn update_head(connection: &Connection, hash: &str) -> Result<(), Box<dyn Er
 }
 
 pub fn get_by_name(connection: &Connection, name: &str) -> Result<Option<Commit>, Box<dyn Error>> {
-    println!("getting ref: {}", name);
     match connection
         .query_row(
             "

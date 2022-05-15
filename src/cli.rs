@@ -3,7 +3,7 @@ use std::error::Error;
 use std::fs;
 use std::path::Path;
 
-use crate::actions::{add, checkout, commit, init, log, remote, reset, status, tree};
+use crate::actions::{add, checkout, commit, init, log, push, remote, reset, status, tree};
 use crate::db::get_connection;
 use crate::store::get_root_path;
 
@@ -53,7 +53,10 @@ pub enum Action {
         action: Remote,
     },
     //Fetch { path: String, remote: String },
-    //Push { path: String, remote: String },
+    Push {
+        path: String,
+        remote: String,
+    },
     //Diff { path: String, remote: String },
 }
 
@@ -68,33 +71,37 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
 
     match &cli.action {
-        Action::Remote { action } => {
-            match action {
-                Remote::Add { path, name, url } => {
-                    let path = fs::canonicalize(path)?;
-                    let root_path = get_root_path(&path).ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
-                    let connection = get_connection(root_path)?;
-                    remote::add(&connection, name, url)
-                }
-                Remote::List { path } => {
-                    let path = fs::canonicalize(path)?;
-                    let root_path = get_root_path(&path).ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
-                    let connection = get_connection(root_path)?;
-                    remote::list(&connection)
-                }
+        Action::Remote { action } => match action {
+            Remote::Add { path, name, url } => {
+                println!("Remote::Add: {}", path);
+                let path = fs::canonicalize(path)?;
+                let root_path = get_root_path(&path)
+                    .ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
+                let connection = get_connection(root_path)?;
+                remote::add(&connection, name, url)
             }
-        }
+            Remote::List { path } => {
+                println!("Remote::List: {}", path);
+                let path = fs::canonicalize(path)?;
+                let root_path = get_root_path(&path)
+                    .ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
+                let connection = get_connection(root_path)?;
+                remote::list(&connection)
+            }
+        },
         Action::Commit { path } => {
             println!("Action::Commit: {}", path);
             let path = fs::canonicalize(path)?;
-            let root_path = get_root_path(&path).ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
+            let root_path = get_root_path(&path)
+                .ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
             let connection = get_connection(root_path)?;
             commit::commit(&connection, &path)
         }
         Action::Status { path } => {
             println!("Action::Status: {}", path);
             let path = fs::canonicalize(path)?;
-            let root_path = get_root_path(&path).ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
+            let root_path = get_root_path(&path)
+                .ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
             let connection = get_connection(root_path)?;
             status::status(&connection, &path)
         }
@@ -109,7 +116,8 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         Action::Add { path } => {
             println!("Action::Add: {}", path);
             let path = fs::canonicalize(path)?;
-            let root_path = get_root_path(&path).ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
+            let root_path = get_root_path(&path)
+                .ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
             let rel_path = path.strip_prefix(root_path)?;
             let connection = get_connection(root_path)?;
             add::add(&connection, &path, &root_path, &rel_path)
@@ -117,31 +125,41 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         Action::Log { path } => {
             println!("Action::Log: {}", path);
             let path = fs::canonicalize(path)?;
-            let root_path = get_root_path(&path).ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
+            let root_path = get_root_path(&path)
+                .ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
             let connection = get_connection(root_path)?;
             log::log(&connection, &path)
         }
         Action::Checkout { path, hash } => {
             let path = fs::canonicalize(path)?;
-            let root_path = get_root_path(&path).ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
+            let root_path = get_root_path(&path)
+                .ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
             let connection = get_connection(root_path)?;
             checkout::checkout(&connection, hash)
         }
         Action::Reset { path } => {
             println!("Action::Reset: {}", path);
             let path = fs::canonicalize(path)?;
-            let root_path = get_root_path(&path).ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
+            let root_path = get_root_path(&path)
+                .ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
             let connection = get_connection(root_path)?;
             reset::reset(&connection, &path)
         }
         Action::Tree { path, hash } => {
             println!("Action::Reset: {}", path);
             let path = fs::canonicalize(path)?;
-            let root_path = get_root_path(&path).ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
+            let root_path = get_root_path(&path)
+                .ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
             let connection = get_connection(root_path)?;
             tree::tree(&connection, hash)
         }
-        //Action::Fetch { remote } => Ok(()),
+        Action::Push { path, remote } => {
+            let path = fs::canonicalize(path)?;
+            let root_path = get_root_path(&path)
+                .ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
+            let connection = get_connection(root_path)?;
+            push::push(&connection, remote)
+        }
         //Action::Push { remote } => Ok(()),
         //Action::Diff { remote } => Ok(()),
     }
