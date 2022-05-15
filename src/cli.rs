@@ -14,6 +14,9 @@ pub enum Remote {
         name: String,
         url: String,
     },
+    List {
+        path: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -72,6 +75,12 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                     let root_path = get_root_path(&path).ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
                     let connection = get_connection(root_path)?;
                     remote::add(&connection, name, url)
+                }
+                Remote::List { path } => {
+                    let path = fs::canonicalize(path)?;
+                    let root_path = get_root_path(&path).ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
+                    let connection = get_connection(root_path)?;
+                    remote::list(&connection)
                 }
             }
         }

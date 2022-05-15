@@ -49,7 +49,8 @@ pub fn insert_batch(
 
 pub fn get_tree(connection: &Connection, hash: &str) -> Result<Vec<TreeFile>, rusqlite::Error> {
     let mut statement = connection.prepare(
-        "SELECT
+        "
+        SELECT
             path, file_hash, size_bytes, commit_hash
         FROM
             trees
