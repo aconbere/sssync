@@ -45,8 +45,6 @@ pub enum Action {
     Push {
         remote: String,
     },
-    //Fetch { path: String, remote: String },
-    //Diff { path: String, remote: String },
 }
 
 #[derive(Parser, Debug)]
@@ -82,7 +80,11 @@ pub fn run() -> Result<(), Box<dyn Error>> {
 
     match &cli.action {
         Action::Remote { action } => match action {
-            Remote::Add { name, kind, location } => {
+            Remote::Add {
+                name,
+                kind,
+                location,
+            } => {
                 println!("Remote::Add: {} {} {}", name, kind, location);
                 remote::add(&connection, name, kind, location)
             }
@@ -112,9 +114,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             println!("Action::Log: {}", path.display());
             log::log(&connection)
         }
-        Action::Checkout { hash } => {
-            checkout::checkout(&connection, hash)
-        }
+        Action::Checkout { hash } => checkout::checkout(&connection, hash),
         Action::Reset => {
             println!("Action::Reset: {}", path.display());
             reset::reset(&connection, &path)
@@ -123,10 +123,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             println!("Action::Tree: {}", path.display());
             tree::tree(&connection, hash)
         }
-        Action::Push { remote } => {
-            push::push(&connection, remote)
-        }
-        //Action::Push { remote } => Ok(()),
-        //Action::Diff { remote } => Ok(()),
+        Action::Push { remote } => push::push(&connection, remote),
     }
 }
