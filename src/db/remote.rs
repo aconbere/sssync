@@ -4,6 +4,7 @@ use rusqlite::params;
 use rusqlite::Connection;
 
 use crate::models::remote::Remote;
+use crate::types::remote_kind::RemoteKind;
 
 pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     connection.execute(
@@ -11,7 +12,8 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
         CREATE TABLE
             remotes (
                 name PRIMARY KEY,
-                url NOT NULL
+                kind TEXT NOT NULL,
+                location TEXT NOT NULL
             )
         ",
         params![],
@@ -22,17 +24,18 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
 pub fn insert(connection: &Connection, remote: &Remote) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
-        INSERT INTO remotes (name, url)
-        VALUES (?1, ?2)
+        INSERT INTO remotes (name, kind, location)
+        VALUES (?1, ?2, ?3)
         ",
-        params![remote.name, String::from(remote.url.clone())],
+        params![remote.name, remote.kind, remote.location],
     )?;
     Ok(())
 }
 
 struct IntermediateRemote {
     name: String,
-    url: String,
+    kind: RemoteKind,
+    location: String,
 }
 
 fn get_all_intermediate(
@@ -41,7 +44,7 @@ fn get_all_intermediate(
     let mut statement = connection.prepare(
         "
         SELECT
-            name, url
+            name, kind, location
         FROM
             remotes
         ",
@@ -51,7 +54,8 @@ fn get_all_intermediate(
         .query_map(params![], |row| {
             Ok(IntermediateRemote {
                 name: row.get(0)?,
-                url: row.get(1)?,
+                kind: row.get(1)?,
+                location: row.get(2)?,
             })
         })
         .into_iter()
@@ -61,7 +65,10 @@ fn get_all_intermediate(
 
 pub fn get_all(connection: &Connection) -> Result<Vec<Remote>, Box<dyn Error>> {
     let inter = get_all_intermediate(connection)?;
-    inter.iter().map(|e| Remote::new(&e.name, &e.url)).collect()
+    inter
+        .iter()
+        .map(|e| Remote::new(&e.name, e.kind, &e.location))
+        .collect()
 }
 
 fn get_intermediate(
@@ -71,7 +78,7 @@ fn get_intermediate(
     connection.query_row(
         "
         SELECT
-            name, url
+            name, kind, location
         FROM
             remotes
         WHERE
@@ -81,7 +88,8 @@ fn get_intermediate(
         |row| {
             Ok(IntermediateRemote {
                 name: row.get(0)?,
-                url: row.get(1)?,
+                kind: row.get(1)?,
+                location: row.get(2)?,
             })
         },
     )
@@ -89,5 +97,5 @@ fn get_intermediate(
 
 pub fn get(connection: &Connection, name: &str) -> Result<Remote, Box<dyn Error>> {
     let inter = get_intermediate(connection, name)?;
-    Ok(Remote::new(&inter.name, &inter.url)?)
+    Ok(Remote::new(&inter.name, inter.kind, &inter.location)?)
 }

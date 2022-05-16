@@ -7,7 +7,9 @@ mod cli;
 mod db;
 mod hash;
 mod models;
+mod remote;
 mod store;
+mod types;
 
 fn main() {
     exit(match run() {

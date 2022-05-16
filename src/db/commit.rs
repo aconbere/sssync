@@ -73,14 +73,6 @@ pub fn get(connection: &Connection, hash: &str) -> Result<Commit, rusqlite::Erro
 }
 
 pub fn get_all(connection: &Connection, hash: &str) -> Result<Vec<Commit>, rusqlite::Error> {
-    //let mut statement = connection.prepare(
-    //    "SELECT
-    //        hash, comment, author, created_unix_timestamp, parent_hash
-    //    FROM
-    //        commits
-    //    ",
-    //)?;
-
     let mut statement = connection.prepare(
         "
         WITH RECURSIVE
