@@ -95,7 +95,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             let root_path = get_root_path(&path)
                 .ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
             let connection = get_connection(root_path)?;
-            commit::commit(&connection, &path)
+            commit::commit(&connection)
         }
         Action::Status { path } => {
             println!("Action::Status: {}", path);
@@ -128,7 +128,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             let root_path = get_root_path(&path)
                 .ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
             let connection = get_connection(root_path)?;
-            log::log(&connection, &path)
+            log::log(&connection)
         }
         Action::Checkout { path, hash } => {
             let path = fs::canonicalize(path)?;

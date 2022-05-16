@@ -1,18 +1,32 @@
 use std::error::Error;
-use std::path::Path;
 
 use rusqlite::Connection;
 
-use crate::db::commit::get_all;
+use crate::db;
 
-pub fn log(connection: &Connection, _path: &Path) -> Result<(), Box<dyn Error>> {
-    let commits = get_all(connection)?;
-    commits.into_iter().for_each(|commit| {
-        println!("commit {}", commit.hash);
-        println!("Author: {}", commit.author);
-        println!("Date: {}", commit.created_unix_timestamp);
-        println!("");
-        println!("\t{}", commit.comment);
-    });
-    Ok(())
+pub fn log(connection: &Connection) -> Result<(), Box<dyn Error>> {
+    let head = db::reference::get_head(connection)?;
+
+    match head {
+        Some(head_commit) => {
+            let commits = db::commit::get_all(connection, &head_commit.hash)?;
+
+            commits.into_iter().for_each(|commit| {
+                println!("commit {}", commit.hash);
+                println!("Author: {}", commit.author);
+                println!("Date: {}", commit.created_unix_timestamp);
+                println!(
+                    "Parent: {}",
+                    commit.parent_hash.unwrap_or(String::from("None"))
+                );
+                println!("");
+                println!("\t{}", commit.comment);
+            });
+            Ok(())
+        }
+        None => {
+            println!("no commits made yet");
+            Ok(())
+        }
+    }
 }

@@ -16,7 +16,8 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
                 hash TEXT PRIMARY KEY,
                 comment TEXT NOT NULL,
                 author TEXT NOT NULL,
-                created_unix_timestamp INTEGER NOT NULL
+                created_unix_timestamp INTEGER NOT NULL,
+                parent_hash TEXT
             )
         ",
         params![],
@@ -29,15 +30,16 @@ pub fn insert(connection: &Connection, commit: &Commit) -> Result<(), Box<dyn Er
     connection.execute(
         "
         INSERT INTO
-            commits (hash, comment, author, created_unix_timestamp)
+            commits (hash, comment, author, created_unix_timestamp, parent_hash)
         VALUES
-            (?1, ?2, ?3, ?4)
+            (?1, ?2, ?3, ?4, ?5)
         ",
         params![
             commit.hash,
             commit.comment,
             commit.author,
             commit.created_unix_timestamp,
+            commit.parent_hash,
         ],
     )?;
     println!("updating head");
@@ -51,7 +53,7 @@ pub fn get(connection: &Connection, hash: &str) -> Result<Commit, rusqlite::Erro
     connection.query_row(
         "
         SELECT
-            hash, comment, author, created_unix_timestamp
+            hash, comment, author, created_unix_timestamp, parent_hash
         FROM
             commits
         WHERE
@@ -64,27 +66,57 @@ pub fn get(connection: &Connection, hash: &str) -> Result<Commit, rusqlite::Erro
                 comment: row.get(1)?,
                 author: row.get(2)?,
                 created_unix_timestamp: row.get(3)?,
+                parent_hash: row.get(4)?,
             })
         },
     )
 }
 
-pub fn get_all(connection: &Connection) -> Result<Vec<Commit>, rusqlite::Error> {
+pub fn get_all(connection: &Connection, hash: &str) -> Result<Vec<Commit>, rusqlite::Error> {
+    //let mut statement = connection.prepare(
+    //    "SELECT
+    //        hash, comment, author, created_unix_timestamp, parent_hash
+    //    FROM
+    //        commits
+    //    ",
+    //)?;
+
     let mut statement = connection.prepare(
-        "SELECT
-            hash, comment, author, created_unix_timestamp
+        "
+        WITH RECURSIVE
+            log (hash, comment, author, created_unix_timestamp, parent_hash)
+        AS (
+            SELECT
+                c.hash, c.comment, c.author, c.created_unix_timestamp, c.parent_hash
+            FROM
+                commits c
+            WHERE
+                c.hash = ?1
+
+            UNION
+
+            SELECT
+                c.hash, c.comment, c.author, c.created_unix_timestamp, c.parent_hash
+            FROM
+                commits c, log l
+            WHERE 
+                c.hash = l.parent_hash
+        )
+        SELECT
+            hash, comment, author, created_unix_timestamp, parent_hash
         FROM
-            commits
+            log
         ",
     )?;
 
     statement
-        .query_map(params![], |row| {
+        .query_map(params![hash], |row| {
             Ok(Commit {
                 hash: row.get(0)?,
                 comment: row.get(1)?,
                 author: row.get(2)?,
                 created_unix_timestamp: row.get(3)?,
+                parent_hash: row.get(4)?,
             })
         })
         .into_iter()

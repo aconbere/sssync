@@ -1,8 +1,6 @@
+use rusqlite::Connection;
 use std::collections::HashSet;
 use std::error::Error;
-use std::path::Path;
-
-use rusqlite::Connection;
 
 use crate::db;
 use crate::models::commit::Commit;
@@ -24,14 +22,14 @@ fn join_files(set_a: Vec<File>, set_b: Vec<File>) -> Vec<File> {
     Vec::from_iter(result_set)
 }
 
-pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
+pub fn commit(connection: &Connection) -> Result<(), Box<dyn Error>> {
     /* It's possible that at this point the user has no commits in the
      * repository yet. We'll collapse that case down by returning
      * the empty vector
      */
     let head = db::reference::get_head(connection)?;
 
-    let tracked_files: Vec<File> = match head {
+    let tracked_files: Vec<File> = match &head {
         Some(head_commit) => {
             println!("Current Head: {}", head_commit.hash);
             db::tree::get_tree(connection, &head_commit.hash)?
@@ -50,15 +48,13 @@ pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
 
     let result_files = join_files(tracked_files, staged_files);
 
-    // This is wrong; should be the concatenation of all
-    // staged files overlayed with the files in the
-    // current tree;
     let hash = file::hash_all(&result_files);
-    let commit = Commit::new(&hash, "", "")?;
+    let parent_hash = head.map(|h| h.hash);
+    let commit = Commit::new(&hash, "", "", parent_hash)?;
 
     match db::commit::insert(connection, &commit) {
-        Err(_) => {
-            println!("Nothing to commit");
+        Err(e) => {
+            println!("Nothing to commit: {}", e);
             return Ok(());
         }
         Ok(()) => {}
