@@ -8,6 +8,7 @@ mod db;
 mod hash;
 mod models;
 mod remote;
+mod s3;
 mod store;
 mod types;
 

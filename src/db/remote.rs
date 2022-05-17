@@ -38,6 +38,14 @@ struct IntermediateRemote {
     location: String,
 }
 
+pub fn get_all(connection: &Connection) -> Result<Vec<Remote>, Box<dyn Error>> {
+    let inter = get_all_intermediate(connection)?;
+    inter
+        .iter()
+        .map(|e| Remote::new(&e.name, e.kind, &e.location))
+        .collect()
+}
+
 fn get_all_intermediate(
     connection: &Connection,
 ) -> Result<Vec<IntermediateRemote>, rusqlite::Error> {
@@ -63,12 +71,9 @@ fn get_all_intermediate(
         .collect()
 }
 
-pub fn get_all(connection: &Connection) -> Result<Vec<Remote>, Box<dyn Error>> {
-    let inter = get_all_intermediate(connection)?;
-    inter
-        .iter()
-        .map(|e| Remote::new(&e.name, e.kind, &e.location))
-        .collect()
+pub fn get(connection: &Connection, name: &str) -> Result<Remote, Box<dyn Error>> {
+    let inter = get_intermediate(connection, name)?;
+    Ok(Remote::new(&inter.name, inter.kind, &inter.location)?)
 }
 
 fn get_intermediate(
@@ -93,9 +98,4 @@ fn get_intermediate(
             })
         },
     )
-}
-
-pub fn get(connection: &Connection, name: &str) -> Result<Remote, Box<dyn Error>> {
-    let inter = get_intermediate(connection, name)?;
-    Ok(Remote::new(&inter.name, inter.kind, &inter.location)?)
 }
