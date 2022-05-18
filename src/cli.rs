@@ -21,6 +21,9 @@ pub enum Remote {
         location: String,
     },
     List,
+    Init {
+        name: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -89,16 +92,22 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 remote::add(&connection, name, kind, location)
             }
             Remote::List => {
-                println!("Remote::List: {}", path.display());
+                println!("Remote::List");
                 remote::list(&connection)
+            }
+            Remote::Init { name } => {
+                println!("Remote::Init");
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(remote::init(&connection, &root_path, name))?;
+                Ok(())
             }
         },
         Action::Commit => {
-            println!("Action::Commit: {}", path.display());
+            println!("Action::Commit");
             commit::commit(&connection)
         }
         Action::Status => {
-            println!("Action::Status: {}", path.display());
+            println!("Action::Status");
             status::status(&connection, &path)
         }
         Action::Init => {
@@ -106,21 +115,21 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             Ok(())
         }
         Action::Add => {
-            println!("Action::Add: {}", path.display());
+            println!("Action::Add");
             let rel_path = path.strip_prefix(root_path)?;
             add::add(&connection, &path, &root_path, &rel_path)
         }
         Action::Log => {
-            println!("Action::Log: {}", path.display());
+            println!("Action::Log");
             log::log(&connection)
         }
         Action::Checkout { hash } => checkout::checkout(&connection, hash),
         Action::Reset => {
-            println!("Action::Reset: {}", path.display());
+            println!("Action::Reset");
             reset::reset(&connection, &path)
         }
         Action::Tree { hash } => {
-            println!("Action::Tree: {}", path.display());
+            println!("Action::Tree");
             tree::tree(&connection, hash)
         }
         Action::Push { remote } => {
