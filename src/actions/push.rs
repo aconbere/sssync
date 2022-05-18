@@ -1,11 +1,19 @@
 use std::error::Error;
+use std::fs::File;
+use std::path::Path;
 
 use rusqlite::Connection;
 
 use crate::db;
 use crate::remote;
+use crate::s3::make_client;
+use crate::store;
 
-pub fn push(connection: &Connection, remote: &str) -> Result<(), Box<dyn Error>> {
+pub async fn push(
+    connection: &Connection,
+    root_path: &Path,
+    remote: &str,
+) -> Result<(), Box<dyn Error>> {
     let maybe_head = db::reference::get_head(connection)?;
     let head = maybe_head.ok_or(String::from("no head"))?;
 
@@ -16,9 +24,16 @@ pub fn push(connection: &Connection, remote: &str) -> Result<(), Box<dyn Error>>
         head.hash, remote.name, remote.kind, remote.location
     );
 
-    remote::download(&remote)?;
+    let output_file_path = store::store_path(&root_path)
+        .join(store::REMOTES_DIR)
+        .join(format!("{}.db", &remote.name));
 
-    // download the remote db
+    println!("fetching db into: {}", output_file_path.display());
+    let client = make_client().await;
+
+    let mut output_file = File::create(output_file_path)?;
+
+    remote::fetch_database(&client, &remote, &mut output_file).await?;
 
     Ok(())
 }

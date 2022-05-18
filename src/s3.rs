@@ -1,3 +1,4 @@
+use std::io;
 use std::path::PathBuf;
 
 use aws_config::meta::region::RegionProviderChain;
@@ -5,8 +6,9 @@ use aws_sdk_s3::model::{Delete, ObjectIdentifier};
 use aws_sdk_s3::output::ListObjectsV2Output;
 use aws_sdk_s3::types::ByteStream;
 use aws_sdk_s3::{Client, Error};
+use tokio_stream::StreamExt;
 
-pub async fn get_client() -> Client {
+pub async fn make_client() -> Client {
     let region_provider = RegionProviderChain::default_provider().or_else("us-east-1");
     let config = aws_config::from_env().region(region_provider).load().await;
     Client::new(&config)
@@ -16,20 +18,19 @@ pub async fn download_object(
     client: &Client,
     bucket_name: &str,
     key: &str,
-) -> Result<ByteStream, Error> {
-    let resp = client
+    writer: &mut dyn io::Write,
+) -> Result<ByteStream, Box<dyn std::error::Error>> {
+    let mut resp = client
         .get_object()
         .bucket(bucket_name)
         .key(key)
         .send()
         .await?;
 
-    // Okay so we definitely don't want to collect here
-    // let's have the api return the byte stream
-    //
-    // This will probably cause lifetime issues
-    // so instead of returning the bytestream we
-    // should probably give this method a writer
+    while let Some(bytes) = resp.body.try_next().await? {
+        writer.write(&bytes)?;
+    }
+
     Ok(resp.body)
 }
 

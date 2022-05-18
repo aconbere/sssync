@@ -2,11 +2,11 @@ use std::error::Error;
 use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand};
+use tokio;
 
 use crate::actions::{add, checkout, commit, init, log, push, remote, reset, status, tree};
 use crate::db::get_connection;
 use crate::store::get_root_path;
-
 use crate::types::remote_kind::RemoteKind;
 
 #[derive(Subcommand, Debug)]
@@ -123,6 +123,10 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             println!("Action::Tree: {}", path.display());
             tree::tree(&connection, hash)
         }
-        Action::Push { remote } => push::push(&connection, remote),
+        Action::Push { remote } => {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(push::push(&connection, root_path, remote))?;
+            Ok(())
+        }
     }
 }

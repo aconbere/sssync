@@ -1,36 +1,33 @@
 use std::error::Error;
+use std::io::Write;
 
 use url::Url;
 
 use crate::models::remote::Remote;
+use crate::s3::download_object;
 use crate::types::remote_kind::RemoteKind;
+use aws_sdk_s3::Client;
 
-pub fn download(remote: &Remote) -> Result<(), Box<dyn Error>> {
+pub async fn fetch_database(
+    client: &Client,
+    remote: &Remote,
+    writer: &mut dyn Write,
+) -> Result<(), Box<dyn Error>> {
     match remote.kind {
         RemoteKind::S3 => {
-            download_s3(&remote.location)?;
-        }
-        RemoteKind::Local => {}
-    }
-
-    let remote_url = Url::parse(&remote.location)?;
-    match remote_url.scheme() {
-        "s3" => {
-            println!("path:{}", remote_url.path());
+            let u = Url::parse(&remote.location)?;
+            fetch_database_s3(client, &u.host_str().unwrap(), writer).await?;
             Ok(())
         }
-        "file" => {
-            println!("path:{}", remote_url.path());
-            match remote_url.host() {
-                Some(h) => println!("host:{}", h),
-                None => {}
-            }
-            Ok(())
-        }
-        _ => Err(String::from("invalid url scheme").into()),
+        RemoteKind::Local => Ok(()),
     }
 }
 
-pub fn download_s3(location: &str) -> Result<(), Box<dyn Error>> {
+pub async fn fetch_database_s3(
+    client: &Client,
+    bucket: &str,
+    writer: &mut dyn Write,
+) -> Result<(), Box<dyn Error>> {
+    download_object(&client, bucket, "./sssync/sssync.db", writer).await?;
     Ok(())
 }

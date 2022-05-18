@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 pub const STORE_DIR: &str = ".sssync";
 pub const OBJECTS_DIR: &str = "objects";
+pub const REMOTES_DIR: &str = "remotes";
 
 pub fn has_store_dir(path: &Path) -> bool {
     path.join(STORE_DIR).exists()
@@ -50,5 +51,6 @@ pub fn init(path: &Path) -> Result<(), Box<dyn Error>> {
 
     fs::create_dir(&store_path)?;
     fs::create_dir(&store_path.join(OBJECTS_DIR))?;
+    fs::create_dir(&store_path.join(REMOTES_DIR))?;
     Ok(())
 }
