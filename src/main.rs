@@ -6,6 +6,7 @@ mod actions;
 mod cli;
 mod db;
 mod hash;
+mod migration;
 mod models;
 mod remote;
 mod s3;

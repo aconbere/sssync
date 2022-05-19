@@ -5,10 +5,12 @@ use std::path::{Path, PathBuf};
 use crate::store;
 
 pub mod commit;
+pub mod migration;
 pub mod reference;
 pub mod remote;
 pub mod staging;
 pub mod tree;
+pub mod upload;
 
 pub const DB_FILE_NAME: &str = "sssync.db";
 
