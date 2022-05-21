@@ -1,21 +1,27 @@
 use std::error::Error;
+use std::path::Path;
 
 use rusqlite::Connection;
+use url::Url;
 
 use crate::db;
-use crate::models::migration::Migration;
-use crate::models::upload::Upload;
+use crate::models::migration::{Migration, MigrationKind};
+use crate::models::upload::{Upload, UploadState};
+use crate::s3::{make_client, upload_object};
 
-pub fn new(
+pub fn create(
     connection: &Connection,
+    kind: MigrationKind,
+    remote_name: &str,
     object_hashes: Vec<String>,
 ) -> Result<(Migration, Vec<Upload>), Box<dyn Error>> {
-    let migration = Migration::new();
+    let remote = db::remote::get(connection, remote_name)?;
+    let migration = Migration::new(kind, &remote);
     db::migration::insert(connection, &migration)?;
 
     let uploads = object_hashes
         .iter()
-        .map(|h| Upload::new(migration.id, &h))
+        .map(|h| Upload::new(&migration.id, &h))
         .collect();
 
     for upload in uploads {
@@ -25,4 +31,37 @@ pub fn new(
     Ok((migration, uploads))
 }
 
-//pub fn run(migration) {}
+pub async fn run(
+    connection: &Connection,
+    root_path: &Path,
+    migration: &Migration,
+) -> Result<(), Box<dyn Error>> {
+    let uploads = db::upload::get_waiting_for_migration(connection, migration)?;
+
+    let client = make_client().await;
+    let u = Url::parse(&migration.remote_location)?;
+    let bucket = u.host_str().unwrap();
+    let remote_directory = Path::new(u.path()).join(&migration.remote_name);
+
+    for upload in uploads {
+        let remote_object_path = remote_directory
+            .join(".sssync/objects")
+            .join(&upload.object_hash);
+
+        let local_object_path = root_path.join(".sssync/objects").join(&upload.object_hash);
+
+        db::upload::set_state(connection, &upload, UploadState::Running)?;
+        match upload_object(&client, bucket, &local_object_path, &remote_object_path).await {
+            Ok(_) => {
+                db::upload::set_state(connection, &upload, UploadState::Running)?;
+                Ok(())
+            }
+            Err(e) => {
+                db::upload::set_state(connection, &upload, UploadState::Failed)?;
+                Err(e)
+            }
+        }?
+    }
+
+    Ok(())
+}

@@ -28,12 +28,13 @@ pub async fn push(
         .join(store::REMOTES_DIR)
         .join(format!("{}.db", &remote.name));
 
-    println!("fetching db into: {}", output_file_path.display());
     let client = make_client().await;
-
-    let mut output_file = File::create(output_file_path)?;
+    let mut output_file = File::create(&output_file_path)?;
+    println!("fetching db into: {}", &output_file_path.display());
 
     remote::fetch_database(&client, &remote, &mut output_file).await?;
+
+    // now run a migration
 
     Ok(())
 }
