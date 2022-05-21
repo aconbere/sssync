@@ -15,6 +15,7 @@ impl UploadState {
             "Waiting" => Ok(UploadState::Waiting),
             "Running" => Ok(UploadState::Running),
             "Failed" => Ok(UploadState::Failed),
+            "Complete" => Ok(UploadState::Complete),
             _ => Err(format!("invalid kind: {}", s)),
         }
     }

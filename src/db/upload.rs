@@ -54,8 +54,8 @@ pub fn get_all_for_migration(
         .query_map(params![migration.id, state], |row| {
             Ok(Upload {
                 migration_id: row.get(0)?,
-                object_hash: row.get(0)?,
-                state: row.get(0)?,
+                object_hash: row.get(1)?,
+                state: row.get(2)?,
             })
         })
         .into_iter()

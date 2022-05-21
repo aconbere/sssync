@@ -31,5 +31,7 @@ pub fn init(connection: &Connection) -> Result<(), Box<dyn Error>> {
     commit::create_table(connection)?;
     reference::create_table(connection)?;
     remote::create_table(connection)?;
+    migration::create_table(connection)?;
+    upload::create_table(connection)?;
     Ok(())
 }

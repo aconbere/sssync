@@ -1,6 +1,8 @@
 use rusqlite::Connection;
 use std::collections::HashSet;
 use std::error::Error;
+use std::fs;
+use std::path::Path;
 
 use crate::db;
 use crate::models::commit::Commit;
@@ -8,7 +10,7 @@ use crate::models::file;
 use crate::models::file::File;
 use crate::models::tree_file::TreeFile;
 
-fn join_files(set_a: Vec<File>, set_b: Vec<File>) -> Vec<File> {
+fn join_files(set_a: &Vec<File>, set_b: &Vec<File>) -> Vec<File> {
     let mut result_set: HashSet<File> = HashSet::new();
 
     set_a.iter().for_each(|f| {
@@ -22,7 +24,7 @@ fn join_files(set_a: Vec<File>, set_b: Vec<File>) -> Vec<File> {
     Vec::from_iter(result_set)
 }
 
-pub fn commit(connection: &Connection) -> Result<(), Box<dyn Error>> {
+pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
     /* It's possible that at this point the user has no commits in the
      * repository yet. We'll collapse that case down by returning
      * the empty vector
@@ -46,11 +48,22 @@ pub fn commit(connection: &Connection) -> Result<(), Box<dyn Error>> {
         .map(|s| s.to_file())
         .collect();
 
-    let result_files = join_files(tracked_files, staged_files);
+    let result_files = join_files(&tracked_files, &staged_files);
 
     let hash = file::hash_all(&result_files);
     let parent_hash = head.map(|h| h.hash);
     let commit = Commit::new(&hash, "", "", parent_hash)?;
+
+    for f in &staged_files {
+        let source = root_path.join(&f.path);
+        let destination = root_path.join(".sssync/objects").join(&f.file_hash);
+        println!(
+            "copying staged file {} to {}",
+            source.display(),
+            destination.display()
+        );
+        fs::copy(source, destination)?;
+    }
 
     match db::commit::insert(connection, &commit) {
         Err(e) => {
@@ -69,8 +82,5 @@ pub fn commit(connection: &Connection) -> Result<(), Box<dyn Error>> {
 
     // for every staged file we want to copy them to the object store
     // with the filename representing their hash
-    //
-    // then we want to hash all the hashes and write that into a commit
-    // in the db
     Ok(())
 }

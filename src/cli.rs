@@ -104,7 +104,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         },
         Action::Commit => {
             println!("Action::Commit");
-            commit::commit(&connection)
+            commit::commit(&connection, &root_path)
         }
         Action::Status => {
             println!("Action::Status");

@@ -3,7 +3,7 @@ use std::error::Error;
 use rusqlite::params;
 use rusqlite::Connection;
 
-use crate::models::migration::Migration;
+use crate::models::migration::{Migration, MigrationState};
 
 pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     connection.execute(
@@ -11,10 +11,10 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
         CREATE TABLE
             migrations (
                 id TEXT PRIMARY KEY,
-                kind TEXT NOT NULL
-                remote_name TEXT NOT NULL
-                remote_kind TEXT NOT NULL
-                remote_location TEXT NOT NULL
+                kind TEXT NOT NULL,
+                remote_name TEXT NOT NULL,
+                remote_kind TEXT NOT NULL,
+                remote_location TEXT NOT NULL,
                 state TEXT NOT NULL
             )
         ",
@@ -39,6 +39,25 @@ pub fn insert(connection: &Connection, migration: &Migration) -> Result<(), Box<
             migration.remote_location,
             migration.state
         ],
+    )?;
+    Ok(())
+}
+
+pub fn set_state(
+    connection: &Connection,
+    migration: &Migration,
+    state: MigrationState,
+) -> Result<(), Box<dyn Error>> {
+    connection.execute(
+        "
+        UPDATE
+            migrations
+        SET
+            state = ?2
+        WHERE
+            id = ?1
+        ",
+        params![migration.id, state],
     )?;
     Ok(())
 }

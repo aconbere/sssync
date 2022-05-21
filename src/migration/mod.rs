@@ -5,7 +5,7 @@ use rusqlite::Connection;
 use url::Url;
 
 use crate::db;
-use crate::models::migration::{Migration, MigrationKind};
+use crate::models::migration::{Migration, MigrationKind, MigrationState};
 use crate::models::upload::{Upload, UploadState};
 use crate::s3::{make_client, upload_object};
 
@@ -13,22 +13,22 @@ pub fn create(
     connection: &Connection,
     kind: MigrationKind,
     remote_name: &str,
-    object_hashes: Vec<String>,
-) -> Result<(Migration, Vec<Upload>), Box<dyn Error>> {
+    object_hashes: &Vec<String>,
+) -> Result<Migration, Box<dyn Error>> {
     let remote = db::remote::get(connection, remote_name)?;
     let migration = Migration::new(kind, &remote);
     db::migration::insert(connection, &migration)?;
 
-    let uploads = object_hashes
+    let uploads: Vec<Upload> = object_hashes
         .iter()
         .map(|h| Upload::new(&migration.id, &h))
         .collect();
 
-    for upload in uploads {
-        db::upload::insert(connection, &upload)?;
+    for upload in &uploads {
+        db::upload::insert(connection, upload)?;
     }
 
-    Ok((migration, uploads))
+    Ok(migration)
 }
 
 pub async fn run(
@@ -43,6 +43,7 @@ pub async fn run(
     let bucket = u.host_str().unwrap();
     let remote_directory = Path::new(u.path()).join(&migration.remote_name);
 
+    db::migration::set_state(connection, &migration, MigrationState::Running)?;
     for upload in uploads {
         let remote_object_path = remote_directory
             .join(".sssync/objects")
@@ -51,9 +52,14 @@ pub async fn run(
         let local_object_path = root_path.join(".sssync/objects").join(&upload.object_hash);
 
         db::upload::set_state(connection, &upload, UploadState::Running)?;
+        println!(
+            "Uploading {} to {}",
+            local_object_path.display(),
+            remote_object_path.display()
+        );
         match upload_object(&client, bucket, &local_object_path, &remote_object_path).await {
             Ok(_) => {
-                db::upload::set_state(connection, &upload, UploadState::Running)?;
+                db::upload::set_state(connection, &upload, UploadState::Complete)?;
                 Ok(())
             }
             Err(e) => {
@@ -62,6 +68,7 @@ pub async fn run(
             }
         }?
     }
+    db::migration::set_state(connection, &migration, MigrationState::Complete)?;
 
     Ok(())
 }

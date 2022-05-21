@@ -28,7 +28,7 @@ impl Commit {
     }
 }
 
-pub fn get_shared_parent(left: Vec<Commit>, right: Vec<Commit>) -> Option<Commit> {
+pub fn get_shared_parent(left: &Vec<Commit>, right: &Vec<Commit>) -> Option<Commit> {
     let left_last = match left.last() {
         Some(l) => l,
         None => {
@@ -50,30 +50,32 @@ pub fn get_shared_parent(left: Vec<Commit>, right: Vec<Commit>) -> Option<Commit
     let mut shared_parent = left_last;
 
     for i in left.len()..1 {
-        let l = left.get(i);
-        let r = right.get(i);
-
-        if left[i].hash == right[i].hash {
-            shared_parent = &left[i];
+        match (left.get(i), right.get(i)) {
+            (Some(l), Some(r)) => {
+                if l.hash == r.hash {
+                    shared_parent = &left[i];
+                    break;
+                }
+            }
+            _ => break,
         }
-        break;
     }
 
     return Some(shared_parent.clone());
 }
 
-pub fn commits_since(list: Vec<Commit>, parent: Commit) -> Option<Vec<Commit>> {
+pub fn commits_since(list: &Vec<Commit>, parent: &Commit) -> Option<Vec<Commit>> {
     let mut diff: Vec<Commit> = vec![];
     let mut found = false;
 
     for i in 0..list.len() {
-        let l = list[i];
+        let l = &list[i];
 
         if l.hash == parent.hash {
             found = true;
             break;
         }
-        diff.push(list[i]);
+        diff.push(list[i].clone());
     }
 
     if !found {
@@ -91,11 +93,11 @@ pub enum CompareResult {
     NoSharedParent,
 }
 
-pub fn diff(left: Vec<Commit>, right: Vec<Commit>) -> CompareResult {
+pub fn diff(left: &Vec<Commit>, right: &Vec<Commit>) -> CompareResult {
     if let Some(shared_parent) = get_shared_parent(left, right) {
         CompareResult::Diff {
-            left: commits_since(left, shared_parent).unwrap(),
-            right: commits_since(right, shared_parent).unwrap(),
+            left: commits_since(&left, &shared_parent).unwrap(),
+            right: commits_since(&right, &shared_parent).unwrap(),
         }
     } else {
         return CompareResult::NoSharedParent;

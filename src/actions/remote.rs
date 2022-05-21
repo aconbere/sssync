@@ -5,9 +5,8 @@ use rusqlite::Connection;
 use url::Url;
 
 use crate::db;
-use crate::models::migration::{Migration, MigrationKind};
+use crate::models::migration::MigrationKind;
 use crate::models::remote::Remote;
-use crate::models::upload::Upload;
 use crate::s3::{make_client, upload_object};
 use crate::types::remote_kind::RemoteKind;
 
@@ -53,23 +52,17 @@ pub async fn init(
             let remote_directory = Path::new(u.path()).join(&remote.name);
             let remote_db_path = remote_directory.join(".sssync/sssync.db");
             let local_db_path = root_path.join(".sssync/sssync.db");
+            println!("Uploading database");
             upload_object(&client, bucket, &local_db_path, &remote_db_path).await?;
             // at this point we need to kick off a migration
 
-            let migration = Migration::new(MigrationKind::Upload, &remote);
-            db::migration::insert(connection, &migration)?;
-
             let tree = db::tree::get_tree(connection, &head.hash)?;
+            let hashes = tree.iter().map(|t| t.file_hash.to_string()).collect();
+            println!("Saving migration");
+            let migration =
+                crate::migration::create(connection, MigrationKind::Upload, &remote.name, &hashes)?;
 
-            let uploads: Vec<Upload> = tree
-                .iter()
-                .map(|t| Upload::new(&migration.id, &t.file_hash))
-                .collect();
-
-            for upload in uploads {
-                db::upload::insert(connection, &upload)?;
-            }
-
+            println!("Running Migration");
             crate::migration::run(connection, root_path, &migration).await?;
 
             Ok(())
