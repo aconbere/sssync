@@ -29,9 +29,9 @@ pub async fn push(
         .join(format!("{}.db", &remote.name));
 
     let client = make_client().await;
-    let mut output_file = File::create(&output_file_path)?;
     println!("fetching db into: {}", &output_file_path.display());
 
+    let mut output_file = File::create(&output_file_path)?;
     remote::fetch_database(&client, &remote, &mut output_file).await?;
 
     // now run a migration

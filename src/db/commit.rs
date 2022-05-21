@@ -115,3 +115,13 @@ pub fn get_all(connection: &Connection, hash: &str) -> Result<Vec<Commit>, rusql
         .flat_map(|e| e)
         .collect()
 }
+
+pub fn file_changes(
+    connection: &Connection,
+    left: &Vec<Commit>,
+) -> Result<FileChanges, Box<dyn Error>> {
+    // collect the trees for every commit in the vec
+    // Concatentate the changes together into a set of
+    // added and removed files
+    Ok(())
+}

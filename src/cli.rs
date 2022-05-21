@@ -24,6 +24,9 @@ pub enum Remote {
     Init {
         name: String,
     },
+    Push {
+        name: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -99,6 +102,12 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 println!("Remote::Init");
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(remote::init(&connection, &root_path, name))?;
+                Ok(())
+            }
+            Remote::Push { name } => {
+                println!("Remote::Init");
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(remote::push(&connection, &root_path, name))?;
                 Ok(())
             }
         },

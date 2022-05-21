@@ -11,6 +11,7 @@ mod models;
 mod remote;
 mod s3;
 mod store;
+mod tree;
 mod types;
 
 fn main() {
