@@ -1,0 +1,6 @@
+* Check if the object exists in s3 before uploading again
+* Attach a file validity header to the put request
+* Use multipart uploads
+* Build up the additions changes set from a list of commits 
+* Rebase
+* 
