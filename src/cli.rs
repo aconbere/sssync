@@ -2,10 +2,11 @@ use std::error::Error;
 use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand};
+use rusqlite::Connection;
 use tokio;
 
-use crate::actions::{add, checkout, commit, init, log, push, remote, reset, status, tree};
-use crate::db::get_connection;
+use crate::actions::{add, checkout, commit, init, log, remote, reset, status, tree};
+use crate::db::repo_db_path;
 use crate::store::get_root_path;
 use crate::types::remote_kind::RemoteKind;
 
@@ -48,9 +49,6 @@ pub enum Action {
         #[clap(subcommand)]
         action: Remote,
     },
-    Push {
-        remote: String,
-    },
 }
 
 #[derive(Parser, Debug)]
@@ -82,7 +80,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     let root_path =
         get_root_path(&path).ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
 
-    let connection = get_connection(root_path)?;
+    let connection = Connection::open(repo_db_path(&root_path))?;
 
     match &cli.action {
         Action::Remote { action } => match action {
@@ -105,7 +103,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 Ok(())
             }
             Remote::Push { name } => {
-                println!("Remote::Init");
+                println!("Remote::Push");
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(remote::push(&connection, &root_path, name))?;
                 Ok(())
@@ -140,11 +138,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         Action::Tree { hash } => {
             println!("Action::Tree");
             tree::tree(&connection, hash)
-        }
-        Action::Push { remote } => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(push::push(&connection, root_path, remote))?;
-            Ok(())
         }
     }
 }

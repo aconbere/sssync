@@ -51,10 +51,9 @@ pub async fn init(
             let u = Url::parse(&remote.location)?;
             let bucket = u.host_str().unwrap();
             let remote_directory = Path::new(u.path()).join(&remote.name);
+
             let remote_db_path = remote_directory.join(".sssync/sssync.db");
             let local_db_path = root_path.join(".sssync/sssync.db");
-            println!("Uploading database");
-            upload_object(&client, bucket, &local_db_path, &remote_db_path).await?;
 
             let tree = db::tree::get_tree(connection, &head.hash)?;
             let hashes = tree.iter().map(|t| t.file_hash.to_string()).collect();
@@ -64,6 +63,9 @@ pub async fn init(
 
             println!("Running Migration");
             crate::migration::run(connection, root_path, &migration).await?;
+
+            println!("Uploading database");
+            upload_object(&client, bucket, &local_db_path, &remote_db_path).await?;
 
             Ok(())
         }
@@ -78,7 +80,6 @@ pub async fn push(
 ) -> Result<(), Box<dyn Error>> {
     let remote = db::remote::get(connection, remote_name)?;
     let head = db::reference::get_head(connection)?.ok_or("no valid head")?;
-    let commits = db::commit::get_all(connection, &head.hash)?;
 
     match remote.kind {
         RemoteKind::S3 => {
@@ -90,41 +91,73 @@ pub async fn push(
 
             let remote_db_copy =
                 crate::remote::fetch_remote_database(&client, &remote, &root_path).await?;
-            let remote_db_connection = db::get_connection(&remote_db_copy)?;
+
+            let remote_db_connection = Connection::open(&remote_db_copy)?;
             let remote_head = db::reference::get_head(&remote_db_connection)?
                 .ok_or("Remote has no valid head")?;
-            let remote_commits = db::commit::get_all(&remote_db_connection, &remote_head.hash)?;
 
-            match commit::diff(&commits, &remote_commits) {
-                commit::CompareResult::NoSharedParent => {
-                    return Err("Remote has no shared parent".into())
-                }
-                commit::CompareResult::Diff { left, right } => {
-                    if right.len() > 0 {
-                        return Err(
-                            "no fast forward, remote has commits not in the current db".into()
-                        );
-                    }
-                }
+            if remote_head.hash == head.hash {
+                return Err("no differences between remote and local".into());
             }
 
-            println!("Uploading database");
-            upload_object(
-                &client,
-                bucket,
-                &remote_directory.join(".sssync/sssync.db"),
-                &root_path.join(".sssync/sssync.db"),
-            )
-            .await?;
+            // Note: In order for commits to actually work we need to push not just
+            // the current commits changes, but also all the intermediate commits.
+            //
+            // This is important because there's no other way to catch up a peer.
+            //
+            // Example:
+            //
+            // A: 1 -> 2 -> 3
+            // B: 1 -> 2
+            // C: 1
+            //
 
-            let tree = db::tree::get_tree(connection, &head.hash)?;
-            let hashes = tree.iter().map(|t| t.file_hash.to_string()).collect();
-            println!("Saving migration");
+            let commits = db::commit::get_all(connection, &head.hash)?;
+            let remote_commits = db::commit::get_all(&remote_db_connection, &remote_head.hash)?;
+            let fast_forward_commits: Result<Vec<commit::Commit>, Box<dyn Error>> =
+                match commit::diff_commit_list(&commits, &remote_commits) {
+                    commit::CompareResult::NoSharedParent => {
+                        Err("Remote has no shared parent".into())
+                    }
+                    commit::CompareResult::Diff { left, right } => {
+                        if right.len() > 0 {
+                            Err("no fast forward, remote has commits not in the current db".into())
+                        } else if left.len() == 0 {
+                            Err("no differences between remote and local".into())
+                        } else {
+                            Ok(left)
+                        }
+                    }
+                };
+
+            let _fast_forward_commits = fast_forward_commits?;
+
+            let diff = db::tree::diff(connection, &head, &remote_head)?;
+            let files_to_upload = [diff.additions, diff.changes].concat();
+            let hashes = files_to_upload
+                .iter()
+                .map(|d| d.file_hash.to_string())
+                .collect();
+
+            println!("Creating migration");
             let migration =
                 crate::migration::create(connection, MigrationKind::Upload, &remote.name, &hashes)?;
 
             println!("Running Migration");
             crate::migration::run(connection, root_path, &migration).await?;
+
+            println!(
+                "Uploading database from {} to {}",
+                &remote_directory.display(),
+                &root_path.display()
+            );
+            upload_object(
+                &client,
+                bucket,
+                &root_path.join(".sssync/sssync.db"),
+                &remote_directory.join(".sssync/sssync.db"),
+            )
+            .await?;
 
             Ok(())
         }

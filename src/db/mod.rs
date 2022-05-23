@@ -18,11 +18,9 @@ pub fn db_path(path: &Path) -> PathBuf {
     path.join(DB_FILE_NAME)
 }
 
-pub fn get_connection(root_path: &Path) -> Result<Connection, Box<dyn Error>> {
+pub fn repo_db_path(root_path: &Path) -> PathBuf {
     let store_path = store::store_path(root_path);
-    let db_path = db_path(&store_path);
-    let connection = Connection::open(db_path)?;
-    Ok(connection)
+    db_path(&store_path)
 }
 
 pub fn init(connection: &Connection) -> Result<(), Box<dyn Error>> {

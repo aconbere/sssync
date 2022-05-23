@@ -93,7 +93,7 @@ pub enum CompareResult {
     NoSharedParent,
 }
 
-pub fn diff(left: &Vec<Commit>, right: &Vec<Commit>) -> CompareResult {
+pub fn diff_commit_list(left: &Vec<Commit>, right: &Vec<Commit>) -> CompareResult {
     if let Some(shared_parent) = get_shared_parent(left, right) {
         CompareResult::Diff {
             left: commits_since(&left, &shared_parent).unwrap(),

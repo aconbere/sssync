@@ -3,7 +3,9 @@ use std::error::Error;
 use rusqlite::params;
 use rusqlite::Connection;
 
+use crate::models::commit::Commit;
 use crate::models::tree_file::TreeFile;
+use crate::tree::{diff_trees, DiffResult};
 
 pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     connection.execute(
@@ -71,4 +73,31 @@ pub fn get_tree(connection: &Connection, hash: &str) -> Result<Vec<TreeFile>, ru
         .into_iter()
         .flat_map(|e| e)
         .collect()
+}
+
+pub fn diff(
+    connection: &Connection,
+    left: &Commit,
+    right: &Commit,
+) -> Result<DiffResult, Box<dyn Error>> {
+    if left.hash == right.hash {
+        return Ok(DiffResult {
+            additions: vec![],
+            deletions: vec![],
+            changes: vec![],
+        });
+    }
+
+    let left_tree = get_tree(connection, &left.hash)?;
+    let right_tree = get_tree(connection, &left.hash)?;
+    Ok(diff_trees(&left_tree, &right_tree))
+}
+
+// Go through each commit between two commits and add up all the added objects.
+pub fn collected_additions(
+    connection: &Connection,
+    left: &Commit,
+    right: &Commit,
+) -> Result<(), Box<dyn Error>> {
+    Ok(())
 }

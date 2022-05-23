@@ -21,7 +21,7 @@ pub async fn fetch_database(
             let u = Url::parse(&remote.location)?;
             let bucket = u.host_str().unwrap();
             let directory = Path::new(u.path()).join(&remote.name);
-            let db_path = directory.join("./sssync/sssync.db");
+            let db_path = directory.join(".sssync/sssync.db");
             download_object(&client, bucket, db_path.to_str().unwrap(), writer).await?;
             Ok(())
         }
