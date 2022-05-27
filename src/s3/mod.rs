@@ -8,6 +8,8 @@ use aws_sdk_s3::types::ByteStream;
 use aws_sdk_s3::{Client, Error};
 use tokio_stream::StreamExt;
 
+mod upload_multipart;
+
 pub async fn make_client() -> Client {
     let region_provider = RegionProviderChain::default_provider().or_else("us-west-2");
     let config = aws_config::from_env().region(region_provider).load().await;
