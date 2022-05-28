@@ -7,7 +7,8 @@ use url::Url;
 use crate::db;
 use crate::models::migration::{Migration, MigrationKind, MigrationState};
 use crate::models::upload::{Upload, UploadState};
-use crate::s3::{make_client, upload_object};
+use crate::s3::make_client;
+use crate::s3::upload_multipart::upload_multipart;
 
 pub fn create(
     connection: &Connection,
@@ -57,7 +58,7 @@ pub async fn run(
             local_object_path.display(),
             remote_object_path.display()
         );
-        match upload_object(&client, bucket, &local_object_path, &remote_object_path).await {
+        match upload_multipart(&client, bucket, &local_object_path, &remote_object_path).await {
             Ok(_) => {
                 db::upload::set_state(connection, &upload, UploadState::Complete)?;
                 Ok(())

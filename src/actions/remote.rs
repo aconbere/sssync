@@ -8,7 +8,8 @@ use crate::db;
 use crate::models::commit;
 use crate::models::migration::MigrationKind;
 use crate::models::remote::Remote;
-use crate::s3::{make_client, upload_object};
+use crate::s3::make_client;
+use crate::s3::upload_multipart::upload_multipart;
 use crate::types::remote_kind::RemoteKind;
 
 pub fn add(
@@ -65,7 +66,7 @@ pub async fn init(
             crate::migration::run(connection, root_path, &migration).await?;
 
             println!("Uploading database");
-            upload_object(&client, bucket, &local_db_path, &remote_db_path).await?;
+            upload_multipart(&client, bucket, &local_db_path, &remote_db_path).await?;
 
             Ok(())
         }
@@ -114,6 +115,7 @@ pub async fn push(
 
             let commits = db::commit::get_all(connection, &head.hash)?;
             let remote_commits = db::commit::get_all(&remote_db_connection, &remote_head.hash)?;
+
             let fast_forward_commits: Result<Vec<commit::Commit>, Box<dyn Error>> =
                 match commit::diff_commit_list(&commits, &remote_commits) {
                     commit::CompareResult::NoSharedParent => {
@@ -121,6 +123,8 @@ pub async fn push(
                     }
                     commit::CompareResult::Diff { left, right } => {
                         if right.len() > 0 {
+                            println!("commit diff left {:?}", left);
+                            println!("commit diff right {:?}", right);
                             Err("no fast forward, remote has commits not in the current db".into())
                         } else if left.len() == 0 {
                             Err("no differences between remote and local".into())
@@ -151,7 +155,7 @@ pub async fn push(
                 &remote_directory.display(),
                 &root_path.display()
             );
-            upload_object(
+            upload_multipart(
                 &client,
                 bucket,
                 &root_path.join(".sssync/sssync.db"),

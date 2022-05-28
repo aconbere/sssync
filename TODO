@@ -1,4 +1,5 @@
 * Check if the object exists in s3 before uploading again
+
 * Attach a file validity header to the put request
     - https://docs.aws.amazon.com/AmazonS3/latest/userguide/checking-object-integrity.html
 

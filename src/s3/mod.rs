@@ -1,5 +1,4 @@
 use std::io;
-use std::path::Path;
 
 use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_s3::model::{Delete, ObjectIdentifier};
@@ -8,7 +7,8 @@ use aws_sdk_s3::types::ByteStream;
 use aws_sdk_s3::{Client, Error};
 use tokio_stream::StreamExt;
 
-mod upload_multipart;
+pub mod upload;
+pub mod upload_multipart;
 
 pub async fn make_client() -> Client {
     let region_provider = RegionProviderChain::default_provider().or_else("us-west-2");
@@ -35,24 +35,6 @@ pub async fn download_object(
     }
 
     Ok(resp.body)
-}
-
-pub async fn upload_object(
-    client: &Client,
-    bucket_name: &str,
-    file_path: &Path,
-    key: &Path,
-) -> Result<(), Error> {
-    let body = ByteStream::from_path(file_path).await;
-    client
-        .put_object()
-        .bucket(bucket_name)
-        .key(key.to_str().unwrap())
-        .body(body.unwrap())
-        .send()
-        .await?;
-
-    Ok(())
 }
 
 pub async fn list_objects(client: &Client, bucket_name: &str) -> Result<(), Error> {
