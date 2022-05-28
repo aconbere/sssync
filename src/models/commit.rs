@@ -43,40 +43,32 @@ impl Commit {
 //
 //      let commit_a = Commit::new("a", "", "", None)?;
 //      let commit_b = Commit::new("b", "", "", Some(String::from("a")))?;
+//      let commit_b = Commit::new("c", "", "", Some(String::from("b")))?;
 //
-//      let left = vec![commit_a.clone()];
+//      let left = vec![commit_c.clone(), commit_b.clone(), commit_a.clone()];
 //      let right = vec![commit_b.clone(), commit_a.clone()];
 //
 //      let result = get_shared_parent(&left, &right);
 //
-//      assert_eq!(result, Some(commit_a));
+//      assert_eq!(result, Some(commit_b));
 //
 pub fn get_shared_parent(left: &Vec<Commit>, right: &Vec<Commit>) -> Option<Commit> {
-    let left_last = match left.last() {
-        Some(l) => l,
-        None => {
-            return None;
-        }
-    };
+    let mut shared_parent = None;
 
-    let right_last = match right.last() {
-        Some(r) => r,
-        None => {
-            return None;
-        }
-    };
+    let mut left_i = left.len() - 1;
+    let mut right_i = right.len() - 1;
 
-    if left_last.hash != right_last.hash {
-        return None;
-    }
-
-    let mut shared_parent = left_last;
-
-    for i in left.len()..1 {
-        match (left.get(i), right.get(i)) {
+    loop {
+        match (left.get(left_i), right.get(right_i)) {
             (Some(l), Some(r)) => {
                 if l.hash == r.hash {
-                    shared_parent = &left[i];
+                    shared_parent = Some(left[left_i].clone());
+                    if left_i == 0 || right_i == 0 {
+                        break;
+                    }
+                    left_i -= 1;
+                    right_i -= 1;
+                } else {
                     break;
                 }
             }
@@ -84,7 +76,7 @@ pub fn get_shared_parent(left: &Vec<Commit>, right: &Vec<Commit>) -> Option<Comm
         }
     }
 
-    return Some(shared_parent.clone());
+    return shared_parent.clone();
 }
 
 pub fn commits_since(list: &Vec<Commit>, parent: &Commit) -> Option<Vec<Commit>> {
