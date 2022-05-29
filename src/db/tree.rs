@@ -81,6 +81,7 @@ pub fn diff(
     right: &Commit,
 ) -> Result<DiffResult, Box<dyn Error>> {
     if left.hash == right.hash {
+        println!("db::tree::diff no diff");
         return Ok(DiffResult {
             additions: vec![],
             deletions: vec![],

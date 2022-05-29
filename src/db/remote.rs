@@ -99,3 +99,18 @@ fn get_intermediate(
         },
     )
 }
+
+pub fn delete(connection: &Connection, name: &str) -> Result<(), rusqlite::Error> {
+    let mut statement = connection.prepare(
+        "
+        DELETE
+        FROM
+            remotes
+        WHERE
+            name = ?1
+        ",
+    )?;
+
+    statement.execute(params![name])?;
+    Ok(())
+}

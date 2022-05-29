@@ -1,6 +1,8 @@
-use crate::models::tree_file::TreeFile;
 use std::collections::{HashMap, HashSet};
 
+use crate::models::tree_file::TreeFile;
+
+#[derive(Debug, PartialEq)]
 pub struct DiffResult {
     pub additions: Vec<TreeFile>,
     pub deletions: Vec<TreeFile>,
@@ -30,6 +32,8 @@ pub struct DiffResult {
 // If the file is new or changed, but the path exists in right then the file
 // is changed, otherwise it's new.
 pub fn diff_trees(left: &Vec<TreeFile>, right: &Vec<TreeFile>) -> DiffResult {
+    println!("diff_trees left: {:?}", left);
+    println!("diff_trees right: {:?}", right);
     let mut left_set: HashMap<String, TreeFile> = HashMap::new();
 
     for tree_file in left {
@@ -74,5 +78,61 @@ pub fn diff_trees(left: &Vec<TreeFile>, right: &Vec<TreeFile>) -> DiffResult {
         additions: additions,
         deletions: deletions,
         changes: changes,
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::error::Error;
+
+    #[test]
+    fn test_diff_trees_empty_trees() -> Result<(), Box<dyn Error>> {
+        let left = vec![];
+        let right = vec![];
+
+        let result = diff_trees(&left, &right);
+        assert_eq!(
+            result,
+            DiffResult {
+                additions: vec![],
+                deletions: vec![],
+                changes: vec![],
+            }
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_diff_trees_left_simple_addition() -> Result<(), Box<dyn Error>> {
+        let file_a = TreeFile::new("path-a", "hash-a", 10, "commit-a");
+        let file_b = TreeFile::new("path-b", "hash-b", 10, "commit-a");
+
+        let left = vec![file_a.clone(), file_b.clone()];
+        let right = vec![];
+
+        let result = diff_trees(&left, &right);
+        assert!(result.deletions.is_empty());
+        assert!(result.changes.is_empty());
+        assert!(result.additions.contains(&file_a));
+        assert!(result.additions.contains(&file_b));
+        Ok(())
+    }
+
+    #[test]
+    fn test_diff_trees_change_in_a() -> Result<(), Box<dyn Error>> {
+        let file_a = TreeFile::new("path-a", "hash-a", 10, "commit-a");
+        let file_b = TreeFile::new("path-b", "hash-b", 10, "commit-a");
+
+        let file_a_prime = TreeFile::new("path-a", "hash-a-prime", 10, "commit-a");
+
+        let left = vec![file_a.clone(), file_b.clone()];
+        let right = vec![file_a_prime.clone()];
+
+        let result = diff_trees(&left, &right);
+
+        assert_eq!(result.additions, vec![file_b.clone()]);
+        assert_eq!(result.deletions, vec![file_a_prime.clone()]);
+        assert_eq!(result.changes, vec![file_a.clone()]);
+        Ok(())
     }
 }

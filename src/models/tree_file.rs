@@ -2,7 +2,7 @@ use crate::models::file::File;
 use std::cmp::{Eq, PartialEq};
 use std::hash::{Hash, Hasher};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TreeFile {
     pub path: String,
     pub file_hash: String,

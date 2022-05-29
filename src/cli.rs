@@ -28,6 +28,9 @@ pub enum Remote {
     Push {
         name: String,
     },
+    Remove {
+        name: String,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -106,6 +109,12 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 println!("Remote::Push");
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(remote::push(&connection, &root_path, name))?;
+                Ok(())
+            }
+            Remote::Remove { name } => {
+                println!("Remote::Remove");
+                println!("Removing remote {}", name);
+                remote::remove(&connection, name)?;
                 Ok(())
             }
         },

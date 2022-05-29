@@ -22,6 +22,10 @@ pub fn add(
     db::remote::insert(connection, &remote)
 }
 
+pub fn remove(connection: &Connection, name: &str) -> Result<(), Box<dyn Error>> {
+    db::remote::delete(connection, name).map_err(|e| e.into())
+}
+
 pub fn list(connection: &Connection) -> Result<(), Box<dyn Error>> {
     let remotes = db::remote::get_all(connection)?;
 
@@ -66,7 +70,7 @@ pub async fn init(
             crate::migration::run(connection, root_path, &migration).await?;
 
             println!("Uploading database");
-            upload_multipart(&client, bucket, &local_db_path, &remote_db_path).await?;
+            upload_multipart(&client, bucket, &remote_db_path, &local_db_path).await?;
 
             Ok(())
         }
@@ -123,8 +127,6 @@ pub async fn push(
                     }
                     commit::CompareResult::Diff { left, right } => {
                         if right.len() > 0 {
-                            println!("commit diff left {:?}", left);
-                            println!("commit diff right {:?}", right);
                             Err("no fast forward, remote has commits not in the current db".into())
                         } else if left.len() == 0 {
                             Err("no differences between remote and local".into())
@@ -137,11 +139,13 @@ pub async fn push(
             let _fast_forward_commits = fast_forward_commits?;
 
             let diff = db::tree::diff(connection, &head, &remote_head)?;
+            println!("found diff: {:?}", diff);
             let files_to_upload = [diff.additions, diff.changes].concat();
             let hashes = files_to_upload
                 .iter()
                 .map(|d| d.file_hash.to_string())
                 .collect();
+            println!("found {} additional files to uplaod", files_to_upload.len());
 
             println!("Creating migration");
             let migration =

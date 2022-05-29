@@ -39,6 +39,7 @@ pub async fn run(
 ) -> Result<(), Box<dyn Error>> {
     let uploads = db::upload::get_waiting_for_migration(connection, migration)?;
 
+    println!("uploading {} files", uploads.len());
     let client = make_client().await;
     let u = Url::parse(&migration.remote_location)?;
     let bucket = u.host_str().unwrap();
@@ -58,7 +59,7 @@ pub async fn run(
             local_object_path.display(),
             remote_object_path.display()
         );
-        match upload_multipart(&client, bucket, &local_object_path, &remote_object_path).await {
+        match upload_multipart(&client, bucket, &remote_object_path, &local_object_path).await {
             Ok(_) => {
                 db::upload::set_state(connection, &upload, UploadState::Complete)?;
                 Ok(())
