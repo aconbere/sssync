@@ -162,8 +162,8 @@ pub async fn push(
             upload_multipart(
                 &client,
                 bucket,
-                &root_path.join(".sssync/sssync.db"),
                 &remote_directory.join(".sssync/sssync.db"),
+                &root_path.join(".sssync/sssync.db"),
             )
             .await?;
 
