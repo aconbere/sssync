@@ -36,6 +36,12 @@ pub fn list(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+/* Initialize the remote
+ *
+ * Because sssync doesn't run a remote daemon nor expect remote ssh access it might need to
+ * coordinate the set up of the remote. As an example if the ssync backend is s3 ssync might need
+ * to setup the bucket and push up an initial database.
+ */
 pub async fn init(
     connection: &Connection,
     root_path: &Path,
@@ -169,34 +175,32 @@ pub async fn push(
     }
 }
 
+/* Pull down the remote database
+ *
+ * This will not fetch down remote objects. Bceause a goal of ssync is to minimize transfer costs
+ * its useful to have a distinction between getting the latest remote state (fetch) and getting the
+ * relevant remote objects (undefined as of yet).
+ */
 pub async fn fetch(
     connection: &Connection,
     root_path: &Path,
     remote_name: &str,
 ) -> Result<(), Box<dyn Error>> {
-    //let remote = db::remote::get(connection, remote_name)?;
-    //let head = db::reference::get_head(connection)?.ok_or("no valid head")?;
+    let remote = db::remote::get(connection, remote_name)?;
+    let meta = db::meta::get(connection)?;
+    let head = db::commit::get_by_ref_name(connection, &meta.head)?.ok_or("No commit")?;
 
-    //match remote.kind {
-    //    RemoteKind::S3 => {
-    //        let client = make_client().await;
-    //        let u = Url::parse(&remote.location)?;
+    match remote.kind {
+        RemoteKind::S3 => {
+            let client = make_client().await;
+            let u = Url::parse(&remote.location)?;
 
-    //        let bucket = u.host_str().unwrap();
-    //        let remote_directory = Path::new(u.path()).join(&remote.name);
+            let bucket = u.host_str().unwrap();
+            let remote_directory = Path::new(u.path()).join(&remote.name);
 
-    //        let remote_db_copy =
-    //            crate::remote::fetch_remote_database(&client, &remote, &root_path).await?;
-
-    //        let remote_db_connection = Connection::open(&remote_db_copy)?;
-    //        let remote_head = db::reference::get_head(&remote_db_connection)?
-    //            .ok_or("Remote has no valid head")?;
-
-    //        if remote_head.hash == head.hash {
-    //            return Err("no differences between remote and local".into());
-    //        }
-    //    }
-    //    RemoteKind::Local => Ok(()),
-    //}
-    Ok(())
+            crate::remote::fetch_remote_database(&client, &remote, &root_path).await?;
+            Ok(())
+        }
+        RemoteKind::Local => Ok(()),
+    }
 }
