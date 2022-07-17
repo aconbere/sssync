@@ -10,14 +10,14 @@ use crate::models::staged_file;
 use crate::models::tree_file;
 
 pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
-    let head = db::reference::get_head(connection)?;
+    let meta = db::meta::get(connection)?;
+    let head = db::commit::get_by_ref_name(connection, &meta.head)?;
 
-    /* Fetch all tracked files/
-     */
-    let tracked_files = match head {
-        Some(head_commit) => {
-            println!("Current Head: {}", head_commit.hash);
-            db::tree::get_tree(connection, &head_commit.hash)?
+    //println!("Current Head: {}", head.hash);
+    let tracked_files = match &head {
+        Some(head) => {
+            println!("Head: {}", head.hash);
+            db::tree::get_tree(connection, &head.hash)?
         }
         None => Vec::new(),
     };
@@ -27,9 +27,12 @@ pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
         tracked_map.insert(tf.path.as_str(), tf);
     });
 
+    println!("Tracked Files: {:?}", tracked_files);
+
     /* Fetch all staged files/
      */
     let staged_files = db::staging::get_all(connection)?;
+    println!("Staged Files: {:?}", staged_files);
 
     let mut staged_map: HashMap<&str, &staged_file::StagedFile> = HashMap::new();
 
@@ -39,15 +42,18 @@ pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
 
     /* Fetch all files on disk
      *
-     * Diff these files with the staged files and
-     * tracked files to fund untracked files.
+     * Diff these files with the staged files and tracked files to fund untracked files.
+     *
+     * Of the files already tracked, we then need to rehash them (or look at other indicators) and
+     * see if there are differences inside the file
      */
     let found_files = file::get_all(root_path)?;
+    println!("Found Files: {:?}", found_files);
 
     let unstaged_files: Vec<&PathBuf> = found_files
         .iter()
         .filter(|path| match path.to_str() {
-            Some(s) => !staged_map.contains_key(s) && !tracked_map.contains_key(s),
+            Some(path) => !staged_map.contains_key(path) && !tracked_map.contains_key(path),
             None => false,
         })
         .collect();

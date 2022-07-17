@@ -5,10 +5,17 @@ use clap::{Parser, Subcommand};
 use rusqlite::Connection;
 use tokio;
 
-use crate::actions::{add, checkout, commit, init, log, remote, reset, status, tree};
+use crate::actions::{add, branch, checkout, commit, init, log, remote, reset, status, tree};
 use crate::db::repo_db_path;
 use crate::store::get_root_path;
 use crate::types::remote_kind::RemoteKind;
+
+#[derive(Subcommand, Debug)]
+pub enum Branch {
+    Add { name: String },
+    Switch { name: String },
+    List,
+}
 
 #[derive(Subcommand, Debug)]
 pub enum Remote {
@@ -26,6 +33,9 @@ pub enum Remote {
         name: String,
     },
     Push {
+        name: String,
+    },
+    Fetch {
         name: String,
     },
     Remove {
@@ -47,10 +57,13 @@ pub enum Action {
     Tree {
         hash: String,
     },
-
     Remote {
         #[clap(subcommand)]
         action: Remote,
+    },
+    Branch {
+        #[clap(subcommand)]
+        action: Branch,
     },
 }
 
@@ -111,11 +124,31 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 rt.block_on(remote::push(&connection, &root_path, name))?;
                 Ok(())
             }
+            Remote::Fetch { name } => {
+                println!("Remote::Fetch");
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(remote::fetch(&connection, &root_path, name))?;
+                Ok(())
+            }
             Remote::Remove { name } => {
                 println!("Remote::Remove");
                 println!("Removing remote {}", name);
                 remote::remove(&connection, name)?;
                 Ok(())
+            }
+        },
+        Action::Branch { action } => match action {
+            Branch::Add { name } => {
+                println!("Branch::Add: {}", name);
+                branch::add(&connection, name)
+            }
+            Branch::Switch { name } => {
+                println!("Branch::Switch: {}", name);
+                branch::switch(&connection, name)
+            }
+            Branch::List => {
+                println!("Branch::List");
+                branch::list(&connection)
             }
         },
         Action::Commit => {

@@ -42,13 +42,8 @@ pub async fn init(
     remote_name: &str,
 ) -> Result<(), Box<dyn Error>> {
     let remote = db::remote::get(connection, remote_name)?;
-    let head = db::reference::get_head(connection)?;
-
-    if head.is_none() {
-        return Err("no valid head".into());
-    }
-
-    let head = head.unwrap();
+    let meta = db::meta::get(connection)?;
+    let head = db::commit::get_by_ref_name(connection, &meta.head)?.ok_or("No commit")?;
 
     match remote.kind {
         RemoteKind::S3 => {
@@ -84,7 +79,8 @@ pub async fn push(
     remote_name: &str,
 ) -> Result<(), Box<dyn Error>> {
     let remote = db::remote::get(connection, remote_name)?;
-    let head = db::reference::get_head(connection)?.ok_or("no valid head")?;
+    let meta = db::meta::get(connection)?;
+    let head = db::commit::get_by_ref_name(connection, &meta.head)?.ok_or("No commit")?;
 
     match remote.kind {
         RemoteKind::S3 => {
@@ -98,8 +94,8 @@ pub async fn push(
                 crate::remote::fetch_remote_database(&client, &remote, &root_path).await?;
 
             let remote_db_connection = Connection::open(&remote_db_copy)?;
-            let remote_head = db::reference::get_head(&remote_db_connection)?
-                .ok_or("Remote has no valid head")?;
+            let remote_head = db::commit::get_by_ref_name(&remote_db_connection, &meta.head)?
+                .ok_or("No remote commit")?;
 
             if remote_head.hash == head.hash {
                 return Err("no differences between remote and local".into());
@@ -171,4 +167,36 @@ pub async fn push(
         }
         RemoteKind::Local => Ok(()),
     }
+}
+
+pub async fn fetch(
+    connection: &Connection,
+    root_path: &Path,
+    remote_name: &str,
+) -> Result<(), Box<dyn Error>> {
+    //let remote = db::remote::get(connection, remote_name)?;
+    //let head = db::reference::get_head(connection)?.ok_or("no valid head")?;
+
+    //match remote.kind {
+    //    RemoteKind::S3 => {
+    //        let client = make_client().await;
+    //        let u = Url::parse(&remote.location)?;
+
+    //        let bucket = u.host_str().unwrap();
+    //        let remote_directory = Path::new(u.path()).join(&remote.name);
+
+    //        let remote_db_copy =
+    //            crate::remote::fetch_remote_database(&client, &remote, &root_path).await?;
+
+    //        let remote_db_connection = Connection::open(&remote_db_copy)?;
+    //        let remote_head = db::reference::get_head(&remote_db_connection)?
+    //            .ok_or("Remote has no valid head")?;
+
+    //        if remote_head.hash == head.hash {
+    //            return Err("no differences between remote and local".into());
+    //        }
+    //    }
+    //    RemoteKind::Local => Ok(()),
+    //}
+    Ok(())
 }

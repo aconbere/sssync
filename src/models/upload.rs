@@ -1,7 +1,5 @@
 use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef};
 
-// Note:: Rename to Transfer
-
 pub enum UploadState {
     Waiting,
     Running,

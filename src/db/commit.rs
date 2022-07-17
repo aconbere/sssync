@@ -3,12 +3,12 @@ use std::error::Error;
 use rusqlite;
 use rusqlite::params;
 use rusqlite::Connection;
+use rusqlite::OptionalExtension;
 
-use crate::db::reference;
-use crate::db::staging;
 use crate::models::commit::Commit;
 
 pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
+    println!("commit::create_table");
     connection.execute(
         "
         CREATE TABLE
@@ -26,7 +26,7 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
 }
 
 pub fn insert(connection: &Connection, commit: &Commit) -> Result<(), Box<dyn Error>> {
-    println!("setting commit: {}", commit.hash);
+    println!("commit::insert: {}", commit.hash);
     connection.execute(
         "
         INSERT INTO
@@ -42,14 +42,11 @@ pub fn insert(connection: &Connection, commit: &Commit) -> Result<(), Box<dyn Er
             commit.parent_hash,
         ],
     )?;
-    println!("updating head");
-    reference::update_head(connection, &commit.hash)?;
-    println!("deleting staging");
-    staging::delete(connection)?;
     Ok(())
 }
 
 pub fn get(connection: &Connection, hash: &str) -> Result<Commit, rusqlite::Error> {
+    println!("commit::get: {}", hash);
     connection.query_row(
         "
         SELECT
@@ -73,6 +70,7 @@ pub fn get(connection: &Connection, hash: &str) -> Result<Commit, rusqlite::Erro
 }
 
 pub fn get_all(connection: &Connection, hash: &str) -> Result<Vec<Commit>, rusqlite::Error> {
+    println!("commit::get_all: {}", hash);
     let mut statement = connection.prepare(
         "
         WITH RECURSIVE
@@ -114,4 +112,36 @@ pub fn get_all(connection: &Connection, hash: &str) -> Result<Vec<Commit>, rusql
         .into_iter()
         .flat_map(|e| e)
         .collect()
+}
+
+pub fn get_by_ref_name(
+    connection: &Connection,
+    ref_name: &str,
+) -> Result<Option<Commit>, rusqlite::Error> {
+    connection
+        .query_row(
+            "
+        SELECT
+            c.hash, c.comment, c.author, c.created_unix_timestamp, c.parent_hash
+        FROM
+            commits AS c
+        JOIN
+            refs
+        ON
+            refs.hash = c.hash
+        WHERE
+            refs.name = ?1
+        ",
+            params![ref_name],
+            |row| {
+                Ok(Commit {
+                    hash: row.get(0)?,
+                    comment: row.get(1)?,
+                    author: row.get(2)?,
+                    created_unix_timestamp: row.get(3)?,
+                    parent_hash: row.get(4)?,
+                })
+            },
+        )
+        .optional()
 }

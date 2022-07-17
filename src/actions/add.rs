@@ -24,13 +24,11 @@ pub fn add(
     root_path: &Path,
     rel_path: &Path,
 ) -> Result<(), Box<dyn Error>> {
-    let head = db::reference::get_head(connection)?;
+    let meta = db::meta::get(connection)?;
+    let head = db::commit::get_by_ref_name(connection, &meta.head)?;
 
     let tracked_files = match head {
-        Some(head_commit) => {
-            println!("Current Head: {}", head_commit.hash);
-            db::tree::get_tree(connection, &head_commit.hash)?
-        }
+        Some(head) => db::tree::get_tree(connection, &head.hash)?,
         None => Vec::new(),
     };
 

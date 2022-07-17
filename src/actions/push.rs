@@ -14,8 +14,8 @@ pub async fn push(
     root_path: &Path,
     remote: &str,
 ) -> Result<(), Box<dyn Error>> {
-    let maybe_head = db::reference::get_head(connection)?;
-    let head = maybe_head.ok_or(String::from("no head"))?;
+    let meta = db::meta::get(connection)?;
+    let head = db::commit::get_by_ref_name(connection, &meta.head)?.ok_or("No commit")?;
 
     let remote = db::remote::get(connection, remote)?;
 

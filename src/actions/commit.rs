@@ -8,6 +8,7 @@ use crate::db;
 use crate::models::commit::Commit;
 use crate::models::file;
 use crate::models::file::File;
+use crate::models::reference::Kind;
 use crate::models::tree_file::TreeFile;
 
 fn join_files(set_a: &Vec<File>, set_b: &Vec<File>) -> Vec<File> {
@@ -29,18 +30,18 @@ pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
      * repository yet. We'll collapse that case down by returning
      * the empty vector
      */
-    let head = db::reference::get_head(connection)?;
+    let meta = db::meta::get(connection)?;
+    let head = db::commit::get_by_ref_name(connection, &meta.head)?;
 
-    let tracked_files: Vec<File> = match &head {
-        Some(head_commit) => {
-            println!("Current Head: {}", head_commit.hash);
-            db::tree::get_tree(connection, &head_commit.hash)?
-        }
+    let tracked_files = match &head {
+        Some(head) => db::tree::get_tree(connection, &head.hash)?
+            .iter()
+            .map(|f| f.to_file())
+            .collect(),
         None => Vec::new(),
-    }
-    .iter()
-    .map(|f| f.to_file())
-    .collect();
+    };
+
+    let parent_hash = head.map(|h| h.hash);
 
     // Need to join staged and tracked files
     let staged_files: Vec<File> = db::staging::get_all(connection)?
@@ -51,7 +52,6 @@ pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
     let result_files = join_files(&tracked_files, &staged_files);
 
     let hash = file::hash_all(&result_files);
-    let parent_hash = head.map(|h| h.hash);
     let commit = Commit::new(&hash, "", "", parent_hash)?;
 
     for f in &staged_files {
@@ -72,6 +72,8 @@ pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
         }
         Ok(()) => {}
     }
+    db::reference::update(connection, &meta.head, Kind::Branch, &commit.hash)?;
+    db::staging::delete(connection)?;
 
     let tree_entries: Vec<TreeFile> = result_files
         .iter()

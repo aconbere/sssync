@@ -4,6 +4,7 @@ use std::path::Path;
 use crate::hash::hash_file;
 use crate::models::file::{lstat, File};
 
+#[derive(Debug)]
 pub struct StagedFile {
     pub path: String,
     pub file_hash: String,
