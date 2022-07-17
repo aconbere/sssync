@@ -140,7 +140,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         Action::Branch { action } => match action {
             Branch::Add { name } => {
                 println!("Branch::Add: {}", name);
-                branch::add(&connection, name)
+                branch::add(&connection, name, None)
             }
             Branch::Switch { name } => {
                 println!("Branch::Switch: {}", name);

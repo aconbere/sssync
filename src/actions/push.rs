@@ -16,7 +16,6 @@ pub async fn push(
 ) -> Result<(), Box<dyn Error>> {
     let meta = db::meta::get(connection)?;
     let head = db::commit::get_by_ref_name(connection, &meta.head)?.ok_or("No commit")?;
-
     let remote = db::remote::get(connection, remote)?;
 
     println!(
