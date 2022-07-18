@@ -31,6 +31,9 @@ pub fn add(
 }
 
 pub fn switch(connection: &Connection, name: &str) -> Result<(), Box<dyn Error>> {
+    let commit =
+        db::commit::get_by_ref_name(connection, name)?.ok_or("Could not find hash for ref")?;
+    let tree = db::tree::get(connection, &commit.hash)?;
     Ok(())
 }
 

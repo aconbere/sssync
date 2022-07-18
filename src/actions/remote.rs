@@ -61,7 +61,7 @@ pub async fn init(
             let remote_db_path = remote_directory.join(".sssync/sssync.db");
             let local_db_path = root_path.join(".sssync/sssync.db");
 
-            let tree = db::tree::get_tree(connection, &head.hash)?;
+            let tree = db::tree::get(connection, &head.hash)?;
             let hashes = tree.iter().map(|t| t.file_hash.to_string()).collect();
             println!("Saving migration");
             let migration =

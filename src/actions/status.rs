@@ -13,11 +13,10 @@ pub fn status(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
     let meta = db::meta::get(connection)?;
     let head = db::commit::get_by_ref_name(connection, &meta.head)?;
 
-    //println!("Current Head: {}", head.hash);
     let tracked_files = match &head {
         Some(head) => {
             println!("Head: {}", head.hash);
-            db::tree::get_tree(connection, &head.hash)?
+            db::tree::get(connection, &head.hash)?
         }
         None => Vec::new(),
     };

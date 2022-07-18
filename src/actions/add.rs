@@ -28,7 +28,7 @@ pub fn add(
     let head = db::commit::get_by_ref_name(connection, &meta.head)?;
 
     let tracked_files = match head {
-        Some(head) => db::tree::get_tree(connection, &head.hash)?,
+        Some(head) => db::tree::get(connection, &head.hash)?,
         None => Vec::new(),
     };
 

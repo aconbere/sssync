@@ -5,8 +5,11 @@ use rusqlite::Connection;
 
 use crate::models::commit::Commit;
 use crate::models::tree_file::TreeFile;
-use crate::tree::{diff_trees, DiffResult};
+use crate::tree;
 
+/* A Tree represents a flattened file tree: A heirchal list of files, each with a hash, a size in
+ * bytes, and a commit hash that connects them to the rest of the sssync world.
+ */
 pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
@@ -49,7 +52,7 @@ pub fn insert_batch(
     Ok(())
 }
 
-pub fn get_tree(connection: &Connection, hash: &str) -> Result<Vec<TreeFile>, rusqlite::Error> {
+pub fn get(connection: &Connection, hash: &str) -> Result<Vec<TreeFile>, rusqlite::Error> {
     let mut statement = connection.prepare(
         "
         SELECT
@@ -77,28 +80,19 @@ pub fn get_tree(connection: &Connection, hash: &str) -> Result<Vec<TreeFile>, ru
 
 pub fn diff(
     connection: &Connection,
-    left: &Commit,
-    right: &Commit,
-) -> Result<DiffResult, Box<dyn Error>> {
-    if left.hash == right.hash {
+    older: &Commit,
+    newer: &Commit,
+) -> Result<tree::DiffResult, Box<dyn Error>> {
+    if older.hash == newer.hash {
         println!("db::tree::diff no diff");
-        return Ok(DiffResult {
+        return Ok(tree::DiffResult {
             additions: vec![],
             deletions: vec![],
             changes: vec![],
         });
     }
 
-    let left_tree = get_tree(connection, &left.hash)?;
-    let right_tree = get_tree(connection, &left.hash)?;
-    Ok(diff_trees(&left_tree, &right_tree))
-}
-
-// Go through each commit between two commits and add up all the added objects.
-pub fn collected_additions(
-    connection: &Connection,
-    left: &Commit,
-    right: &Commit,
-) -> Result<(), Box<dyn Error>> {
-    Ok(())
+    let older_tree = get(connection, &older.hash)?;
+    let newer_tree = get(connection, &newer.hash)?;
+    Ok(tree::diff(&older_tree, &newer_tree))
 }

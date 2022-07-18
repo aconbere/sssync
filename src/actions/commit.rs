@@ -34,7 +34,7 @@ pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn E
     let head = db::commit::get_by_ref_name(connection, &meta.head)?;
 
     let tracked_files = match &head {
-        Some(head) => db::tree::get_tree(connection, &head.hash)?
+        Some(head) => db::tree::get(connection, &head.hash)?
             .iter()
             .map(|f| f.to_file())
             .collect(),

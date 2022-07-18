@@ -32,3 +32,9 @@ Just do it
 
 I have the remote db being fetched down and I can use that to diff a subsequent
 push, but there isn't the fetch down of the remote data to sync up.
+
+## Meta::HEAD
+
+Meeds a way to know if the head is a branch or a commit
+
+## Add a hash type to each hash for future upgrades
