@@ -175,29 +175,47 @@ pub async fn push(
     }
 }
 
-/* Pull down the remote database
- *
- * This will not fetch down remote objects. Bceause a goal of ssync is to minimize transfer costs
- * its useful to have a distinction between getting the latest remote state (fetch) and getting the
- * relevant remote objects (undefined as of yet).
- */
 pub async fn fetch(
     connection: &Connection,
     root_path: &Path,
     remote_name: &str,
 ) -> Result<(), Box<dyn Error>> {
     let remote = db::remote::get(connection, remote_name)?;
-    let meta = db::meta::get(connection)?;
-    let head = db::commit::get_by_ref_name(connection, &meta.head)?.ok_or("No commit")?;
+    //let meta = db::meta::get(connection)?;
+
+    //let head = db::commit::get_by_ref_name(connection, &meta.head)?.ok_or("No commit")?;
 
     match remote.kind {
         RemoteKind::S3 => {
             let client = make_client().await;
-            let u = Url::parse(&remote.location)?;
+            // let u = Url::parse(&remote.location)?;
+            //let bucket = u.host_str().unwrap();
+            //let remote_directory = Path::new(u.path()).join(&remote.name);
 
-            let bucket = u.host_str().unwrap();
-            let remote_directory = Path::new(u.path()).join(&remote.name);
+            crate::remote::fetch_remote_database(&client, &remote, &root_path).await?;
+            Ok(())
+        }
+        RemoteKind::Local => Ok(()),
+    }
+}
 
+/* Pull down the remote database
+ *
+ * This will not fetch down remote objects. Bceause a goal of sssync is to minimize transfer costs
+ * its useful to have a distinction between getting the latest remote state (fetch) and getting the
+ * relevant remote objects (undefined as of yet).
+ */
+#[allow(dead_code)]
+pub async fn sync_remote_state(
+    connection: &Connection,
+    root_path: &Path,
+    remote_name: &str,
+) -> Result<(), Box<dyn Error>> {
+    let remote = db::remote::get(connection, remote_name)?;
+
+    match remote.kind {
+        RemoteKind::S3 => {
+            let client = make_client().await;
             crate::remote::fetch_remote_database(&client, &remote, &root_path).await?;
             Ok(())
         }

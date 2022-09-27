@@ -75,9 +75,9 @@ pub fn diff(older: &Vec<TreeFile>, newer: &Vec<TreeFile>) -> DiffResult {
     }
 }
 
-pub fn apply(diff: &DiffResult) {
-    for tf in additions {}
-}
+//pub fn apply(diff: &DiffResult) {
+//    for tf in additions {}
+//}
 
 #[cfg(test)]
 mod tests {

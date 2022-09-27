@@ -60,7 +60,7 @@ async fn run(
     client: &Client,
     upload_id: &str,
     bucket: &str,
-    key_path: &Path,
+    _key_path: &Path,
     reader: &mut dyn Read,
 ) -> Result<(), Box<dyn Error>> {
     let mut part_number = 1;

@@ -43,7 +43,9 @@ fn checkout_diff(
     let new_tree = db::tree::get(connection, new_hash)?;
     let diff = tree::diff(&current_tree, &new_tree);
 
-    for f in diff.additions {}
+    for f in diff.additions {
+        println!("Diff: {}", f.path)
+    }
 
     Ok(())
 }

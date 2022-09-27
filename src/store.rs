@@ -2,9 +2,6 @@ use std::error::Error;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::models::file;
-use crate::models::staged_file;
-
 pub const STORE_DIR: &str = ".sssync";
 pub const OBJECTS_DIR: &str = "objects";
 pub const REMOTES_DIR: &str = "remotes";
@@ -58,9 +55,9 @@ pub fn init(path: &Path) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn add(root_path: PathBuf, path: PathBuf, hash: &str) -> Result<(), Box<dyn Error>> {
-    println!("store::add {}:{}", path.to_string_lossy(), hash);
-    let staged_file = staged_file::StagedFile::new(&root_path.join(path), &path)?;
-    file::copy_if_not_present(&staged_file.to_file(), &root_path)?;
-    Ok(())
-}
+//pub fn add(root_path: PathBuf, path: PathBuf, hash: &str) -> Result<(), Box<dyn Error>> {
+//    println!("store::add {}:{}", path.to_string_lossy(), hash);
+//    let staged_file = staged_file::StagedFile::new(&root_path.join(path), &path)?;
+//    file::copy_if_not_present(&staged_file.to_file(), &root_path)?;
+//    Ok(())
+//}

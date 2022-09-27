@@ -37,6 +37,7 @@ pub async fn download_object(
     Ok(resp.body)
 }
 
+#[allow(dead_code)]
 pub async fn list_objects(client: &Client, bucket_name: &str) -> Result<(), Error> {
     let objects = client.list_objects_v2().bucket(bucket_name).send().await?;
     for obj in objects.contents().unwrap_or_default() {
@@ -46,6 +47,7 @@ pub async fn list_objects(client: &Client, bucket_name: &str) -> Result<(), Erro
     Ok(())
 }
 
+#[allow(dead_code)]
 pub async fn delete_objects(client: &Client, bucket_name: &str) -> Result<(), Error> {
     let objects = client.list_objects_v2().bucket(bucket_name).send().await?;
 

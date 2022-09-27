@@ -41,6 +41,7 @@ pub struct Reference {
 }
 
 impl Reference {
+    #[allow(dead_code)]
     pub fn new(name: &str, kind: Kind, hash: &str) -> Self {
         Self {
             name: name.to_string(),
