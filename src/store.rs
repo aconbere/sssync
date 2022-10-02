@@ -33,7 +33,11 @@ pub fn get_root_path(path: &Path) -> Option<&Path> {
     }
 }
 
-pub fn copy_object(root_path: &Path, hash: &str, destination: &Path) -> Result<(), Box<dyn Error>> {
+pub fn copy_object(
+    root_path: &Path,
+    hash: &str,
+    destination: &Path,
+) -> Result<(), Box<dyn Error>> {
     let p = object_path(root_path, hash);
     fs::copy(p, destination)?;
     Ok(())
@@ -41,7 +45,9 @@ pub fn copy_object(root_path: &Path, hash: &str, destination: &Path) -> Result<(
 
 pub fn init(path: &Path) -> Result<(), Box<dyn Error>> {
     if !path.is_dir() {
-        return Err(format!("path must be a directory: {}", path.display()).into());
+        return Err(
+            format!("path must be a directory: {}", path.display()).into()
+        );
     }
 
     let store_path = store_path(path);

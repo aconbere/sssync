@@ -9,7 +9,11 @@ pub struct Remote {
 }
 
 impl Remote {
-    pub fn new(name: &str, kind: RemoteKind, location: &str) -> Result<Self, Box<dyn Error>> {
+    pub fn new(
+        name: &str,
+        kind: RemoteKind,
+        location: &str,
+    ) -> Result<Self, Box<dyn Error>> {
         Ok(Self {
             name: name.to_string(),
             kind: kind,

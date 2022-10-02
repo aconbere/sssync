@@ -26,7 +26,10 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn insert(connection: &Connection, tree_entry: &TreeFile) -> Result<(), Box<dyn Error>> {
+pub fn insert(
+    connection: &Connection,
+    tree_entry: &TreeFile,
+) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
         INSERT INTO trees (path, file_hash, size_bytes, commit_hash)
@@ -52,7 +55,10 @@ pub fn insert_batch(
     Ok(())
 }
 
-pub fn get(connection: &Connection, hash: &str) -> Result<Vec<TreeFile>, rusqlite::Error> {
+pub fn get(
+    connection: &Connection,
+    hash: &str,
+) -> Result<Vec<TreeFile>, rusqlite::Error> {
     let mut statement = connection.prepare(
         "
         SELECT

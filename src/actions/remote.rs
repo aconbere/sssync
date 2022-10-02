@@ -22,7 +22,10 @@ pub fn add(
     db::remote::insert(connection, &remote)
 }
 
-pub fn remove(connection: &Connection, name: &str) -> Result<(), Box<dyn Error>> {
+pub fn remove(
+    connection: &Connection,
+    name: &str,
+) -> Result<(), Box<dyn Error>> {
     db::remote::delete(connection, name).map_err(|e| e.into())
 }
 
@@ -49,7 +52,8 @@ pub async fn init(
 ) -> Result<(), Box<dyn Error>> {
     let remote = db::remote::get(connection, remote_name)?;
     let meta = db::meta::get(connection)?;
-    let head = db::commit::get_by_ref_name(connection, &meta.head)?.ok_or("No commit")?;
+    let head = db::commit::get_by_ref_name(connection, &meta.head)?
+        .ok_or("No commit")?;
 
     match remote.kind {
         RemoteKind::S3 => {
@@ -66,14 +70,19 @@ pub async fn init(
             let hashes = tree.iter().map(|t| t.file_hash.to_string()).collect();
 
             println!("Saving migration");
-            let migration =
-                crate::migration::create(connection, MigrationKind::Upload, &remote.name, &hashes)?;
+            let migration = crate::migration::create(
+                connection,
+                MigrationKind::Upload,
+                &remote.name,
+                &hashes,
+            )?;
 
             println!("Running Migration");
             crate::migration::run(connection, root_path, &migration).await?;
 
             println!("Uploading database");
-            upload_multipart(&client, bucket, &remote_db_path, &local_db_path).await?;
+            upload_multipart(&client, bucket, &remote_db_path, &local_db_path)
+                .await?;
 
             Ok(())
         }
@@ -88,7 +97,8 @@ pub async fn push(
 ) -> Result<(), Box<dyn Error>> {
     let remote = db::remote::get(connection, remote_name)?;
     let meta = db::meta::get(connection)?;
-    let head = db::commit::get_by_ref_name(connection, &meta.head)?.ok_or("No commit")?;
+    let head = db::commit::get_by_ref_name(connection, &meta.head)?
+        .ok_or("No commit")?;
 
     match remote.kind {
         RemoteKind::S3 => {
@@ -98,12 +108,15 @@ pub async fn push(
             let bucket = u.host_str().unwrap();
             let remote_directory = Path::new(u.path()).join(&remote.name);
 
-            let remote_db_copy =
-                crate::remote::fetch_remote_database(&client, &remote, &root_path).await?;
+            let remote_db_copy = crate::remote::fetch_remote_database(
+                &client, &remote, &root_path,
+            )
+            .await?;
 
             let remote_db_connection = Connection::open(&remote_db_copy)?;
-            let remote_head = db::commit::get_by_ref_name(&remote_db_connection, &meta.head)?
-                .ok_or("No remote commit")?;
+            let remote_head =
+                db::commit::get_by_ref_name(&remote_db_connection, &meta.head)?
+                    .ok_or("No remote commit")?;
 
             if remote_head.hash == head.hash {
                 return Err("no differences between remote and local".into());
@@ -122,23 +135,26 @@ pub async fn push(
             //
 
             let commits = db::commit::get_all(connection, &head.hash)?;
-            let remote_commits = db::commit::get_all(&remote_db_connection, &remote_head.hash)?;
+            let remote_commits =
+                db::commit::get_all(&remote_db_connection, &remote_head.hash)?;
 
-            let fast_forward_commits: Result<Vec<commit::Commit>, Box<dyn Error>> =
-                match commit::diff_commit_list(&commits, &remote_commits) {
-                    commit::CompareResult::NoSharedParent => {
-                        Err("Remote has no shared parent".into())
+            let fast_forward_commits: Result<
+                Vec<commit::Commit>,
+                Box<dyn Error>,
+            > = match commit::diff_commit_list(&commits, &remote_commits) {
+                commit::CompareResult::NoSharedParent => {
+                    Err("Remote has no shared parent".into())
+                }
+                commit::CompareResult::Diff { left, right } => {
+                    if right.len() > 0 {
+                        Err("no fast forward, remote has commits not in the current db".into())
+                    } else if left.len() == 0 {
+                        Err("no differences between remote and local".into())
+                    } else {
+                        Ok(left)
                     }
-                    commit::CompareResult::Diff { left, right } => {
-                        if right.len() > 0 {
-                            Err("no fast forward, remote has commits not in the current db".into())
-                        } else if left.len() == 0 {
-                            Err("no differences between remote and local".into())
-                        } else {
-                            Ok(left)
-                        }
-                    }
-                };
+                }
+            };
 
             let _fast_forward_commits = fast_forward_commits?;
 
@@ -149,11 +165,18 @@ pub async fn push(
                 .iter()
                 .map(|d| d.file_hash.to_string())
                 .collect();
-            println!("found {} additional files to uplaod", files_to_upload.len());
+            println!(
+                "found {} additional files to uplaod",
+                files_to_upload.len()
+            );
 
             println!("Creating migration");
-            let migration =
-                crate::migration::create(connection, MigrationKind::Upload, &remote.name, &hashes)?;
+            let migration = crate::migration::create(
+                connection,
+                MigrationKind::Upload,
+                &remote.name,
+                &hashes,
+            )?;
 
             println!("Running Migration");
             crate::migration::run(connection, root_path, &migration).await?;
@@ -194,7 +217,8 @@ pub async fn fetch(
             //let bucket = u.host_str().unwrap();
             //let remote_directory = Path::new(u.path()).join(&remote.name);
 
-            crate::remote::fetch_remote_database(&client, &remote, &root_path).await?;
+            crate::remote::fetch_remote_database(&client, &remote, &root_path)
+                .await?;
             Ok(())
         }
         RemoteKind::Local => Ok(()),
@@ -218,7 +242,8 @@ pub async fn sync(
     match remote.kind {
         RemoteKind::S3 => {
             let client = make_client().await;
-            crate::remote::fetch_remote_database(&client, &remote, &root_path).await?;
+            crate::remote::fetch_remote_database(&client, &remote, &root_path)
+                .await?;
             Ok(())
         }
         RemoteKind::Local => Ok(()),

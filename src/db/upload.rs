@@ -21,7 +21,10 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn insert(connection: &Connection, upload: &Upload) -> Result<(), Box<dyn Error>> {
+pub fn insert(
+    connection: &Connection,
+    upload: &Upload,
+) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
         INSERT INTO

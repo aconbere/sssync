@@ -1,7 +1,9 @@
 use std::fmt;
 
 use clap::ArgEnum;
-use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef};
+use rusqlite::types::{
+    FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef,
+};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, ArgEnum)]
 pub enum RemoteKind {

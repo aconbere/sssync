@@ -6,7 +6,8 @@ use crate::db;
 
 pub fn log(connection: &Connection) -> Result<(), Box<dyn Error>> {
     let meta = db::meta::get(connection)?;
-    let head = db::commit::get_by_ref_name(connection, &meta.head)?.ok_or("No commit")?;
+    let head = db::commit::get_by_ref_name(connection, &meta.head)?
+        .ok_or("No commit")?;
     let commits = db::commit::get_all(connection, &head.hash)?;
 
     commits.into_iter().for_each(|commit| {

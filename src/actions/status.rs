@@ -62,9 +62,13 @@ impl fmt::Display for Status {
  *  It does this by building up a set of each of these files (TreeFiles), and comparing
  *  the sets to produce a human readable string outpute.
  */
-pub fn status(connection: &Connection, root_path: &Path) -> Result<Status, Box<dyn Error>> {
+pub fn status(
+    connection: &Connection,
+    root_path: &Path,
+) -> Result<Status, Box<dyn Error>> {
     let meta = db::meta::get(connection)?;
-    let head = db::commit::get_by_ref_name(connection, &meta.head)?.ok_or("no head")?;
+    let head = db::commit::get_by_ref_name(connection, &meta.head)?
+        .ok_or("no head")?;
 
     /* Tracked files are files that are already in the store. */
     let tracked_files = db::tree::get(connection, &head.hash)?;
@@ -121,7 +125,9 @@ pub fn status(connection: &Connection, root_path: &Path) -> Result<Status, Box<d
 
     let mut deleted_files: Vec<tree_file::TreeFile> = Vec::new();
     for tf in tracked_files {
-        if !staged_map.contains_key(tf.path.as_str()) && !disk_map.contains_key(tf.path.as_str()) {
+        if !staged_map.contains_key(tf.path.as_str())
+            && !disk_map.contains_key(tf.path.as_str())
+        {
             deleted_files.push(tf)
         }
     }

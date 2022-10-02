@@ -3,7 +3,9 @@ use uuid::Uuid;
 use crate::models::remote::Remote;
 use crate::types::remote_kind::RemoteKind;
 
-use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef};
+use rusqlite::types::{
+    FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef,
+};
 
 pub enum MigrationKind {
     Upload,

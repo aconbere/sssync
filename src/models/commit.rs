@@ -52,7 +52,10 @@ impl Commit {
 //
 //      assert_eq!(result, Some(commit_b));
 //
-pub fn get_shared_parent(left: &Vec<Commit>, right: &Vec<Commit>) -> Option<Commit> {
+pub fn get_shared_parent(
+    left: &Vec<Commit>,
+    right: &Vec<Commit>,
+) -> Option<Commit> {
     let mut shared_parent = None;
 
     let mut left_i = left.len() - 1;
@@ -79,7 +82,10 @@ pub fn get_shared_parent(left: &Vec<Commit>, right: &Vec<Commit>) -> Option<Comm
     return shared_parent.clone();
 }
 
-pub fn commits_since(list: &Vec<Commit>, parent: &Commit) -> Option<Vec<Commit>> {
+pub fn commits_since(
+    list: &Vec<Commit>,
+    parent: &Commit,
+) -> Option<Vec<Commit>> {
     let mut diff: Vec<Commit> = vec![];
     let mut found = false;
 
@@ -108,7 +114,10 @@ pub enum CompareResult {
     NoSharedParent,
 }
 
-pub fn diff_commit_list(left: &Vec<Commit>, right: &Vec<Commit>) -> CompareResult {
+pub fn diff_commit_list(
+    left: &Vec<Commit>,
+    right: &Vec<Commit>,
+) -> CompareResult {
     if let Some(shared_parent) = get_shared_parent(left, right) {
         CompareResult::Diff {
             left: commits_since(&left, &shared_parent).unwrap(),
@@ -151,7 +160,8 @@ mod tests {
     }
 
     #[test]
-    fn test_get_shared_parent_with_right_longer() -> Result<(), Box<dyn Error>> {
+    fn test_get_shared_parent_with_right_longer() -> Result<(), Box<dyn Error>>
+    {
         let commit_a = Commit::new("a", "", "", None)?;
         let commit_b = Commit::new("b", "", "", Some(String::from("a")))?;
         let commit_c = Commit::new("c", "", "", Some(String::from("b")))?;

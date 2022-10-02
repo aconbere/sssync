@@ -25,7 +25,10 @@ fn join_files(set_a: &Vec<File>, set_b: &Vec<File>) -> Vec<File> {
     Vec::from_iter(result_set)
 }
 
-pub fn commit(connection: &Connection, root_path: &Path) -> Result<(), Box<dyn Error>> {
+pub fn commit(
+    connection: &Connection,
+    root_path: &Path,
+) -> Result<(), Box<dyn Error>> {
     /* It's possible that at this point the user has no commits in the
      * repository yet. We'll collapse that case down by returning
      * the empty vector

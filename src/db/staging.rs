@@ -22,7 +22,10 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn insert(connection: &Connection, file_entry: &StagedFile) -> Result<(), Box<dyn Error>> {
+pub fn insert(
+    connection: &Connection,
+    file_entry: &StagedFile,
+) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
         INSERT INTO
@@ -47,7 +50,9 @@ pub fn insert(connection: &Connection, file_entry: &StagedFile) -> Result<(), Bo
     Ok(())
 }
 
-pub fn get_all(connection: &Connection) -> Result<Vec<StagedFile>, Box<dyn Error>> {
+pub fn get_all(
+    connection: &Connection,
+) -> Result<Vec<StagedFile>, Box<dyn Error>> {
     let mut stmt = connection.prepare(
         "
             SELECT

@@ -42,7 +42,10 @@ pub fn add(
 
         for file in files {
             if !contains_path(&tracked_map, &file) {
-                let staged_file = staged_file::StagedFile::new(&root_path.join(&file), &file)?;
+                let staged_file = staged_file::StagedFile::new(
+                    &root_path.join(&file),
+                    &file,
+                )?;
                 file::copy_if_not_present(&staged_file.to_file(), root_path)?;
                 db::staging::insert(connection, &staged_file)?;
             }

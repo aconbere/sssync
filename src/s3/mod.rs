@@ -11,7 +11,8 @@ pub mod upload;
 pub mod upload_multipart;
 
 pub async fn make_client() -> Client {
-    let region_provider = RegionProviderChain::default_provider().or_else("us-west-2");
+    let region_provider =
+        RegionProviderChain::default_provider().or_else("us-west-2");
     let config = aws_config::from_env().region(region_provider).load().await;
     Client::new(&config)
 }
@@ -38,7 +39,10 @@ pub async fn download_object(
 }
 
 #[allow(dead_code)]
-pub async fn list_objects(client: &Client, bucket_name: &str) -> Result<(), Error> {
+pub async fn list_objects(
+    client: &Client,
+    bucket_name: &str,
+) -> Result<(), Error> {
     let objects = client.list_objects_v2().bucket(bucket_name).send().await?;
     for obj in objects.contents().unwrap_or_default() {
         println!("{:?}", obj.key().unwrap());
@@ -48,7 +52,10 @@ pub async fn list_objects(client: &Client, bucket_name: &str) -> Result<(), Erro
 }
 
 #[allow(dead_code)]
-pub async fn delete_objects(client: &Client, bucket_name: &str) -> Result<(), Error> {
+pub async fn delete_objects(
+    client: &Client,
+    bucket_name: &str,
+) -> Result<(), Error> {
     let objects = client.list_objects_v2().bucket(bucket_name).send().await?;
 
     let mut delete_objects: Vec<ObjectIdentifier> = vec![];
@@ -65,7 +72,8 @@ pub async fn delete_objects(client: &Client, bucket_name: &str) -> Result<(), Er
         .send()
         .await?;
 
-    let objects: ListObjectsV2Output = client.list_objects_v2().bucket(bucket_name).send().await?;
+    let objects: ListObjectsV2Output =
+        client.list_objects_v2().bucket(bucket_name).send().await?;
     match objects.key_count {
         0 => Ok(()),
         _ => Err(Error::Unhandled(Box::from(

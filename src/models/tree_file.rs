@@ -24,7 +24,12 @@ impl Hash for TreeFile {
 }
 
 impl TreeFile {
-    pub fn new(path: &str, file_hash: &str, size_bytes: i64, commit_hash: &str) -> Self {
+    pub fn new(
+        path: &str,
+        file_hash: &str,
+        size_bytes: i64,
+        commit_hash: &str,
+    ) -> Self {
         Self {
             path: path.to_string(),
             file_hash: file_hash.to_string(),

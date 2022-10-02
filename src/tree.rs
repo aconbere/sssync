@@ -77,7 +77,10 @@ pub fn diff(older: &Vec<TreeFile>, newer: &Vec<TreeFile>) -> DiffResult {
     }
 }
 
-pub fn apply_diff(root_path: &Path, diff: &DiffResult) -> Result<(), Box<dyn Error>> {
+pub fn apply_diff(
+    root_path: &Path,
+    diff: &DiffResult,
+) -> Result<(), Box<dyn Error>> {
     for a in &diff.additions {
         let destination = root_path.join(&a.path);
         store::copy_object(root_path, &a.file_hash, &destination)?;
@@ -136,7 +139,8 @@ mod tests {
         let file_a = TreeFile::new("path-a", "hash-a", 10, "commit-a");
         let file_b = TreeFile::new("path-b", "hash-b", 10, "commit-a");
 
-        let file_a_prime = TreeFile::new("path-a", "hash-a-prime", 10, "commit-a");
+        let file_a_prime =
+            TreeFile::new("path-a", "hash-a-prime", 10, "commit-a");
 
         let newer = vec![file_a.clone(), file_b.clone()];
         let older = vec![file_a_prime.clone()];

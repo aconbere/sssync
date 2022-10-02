@@ -5,7 +5,9 @@ use clap::{Parser, Subcommand};
 use rusqlite::Connection;
 use tokio;
 
-use crate::actions::{add, branch, checkout, commit, init, log, remote, reset, status, tree};
+use crate::actions::{
+    add, branch, checkout, commit, init, log, remote, reset, status, tree,
+};
 use crate::db::repo_db_path;
 use crate::store::get_root_path;
 use crate::types::remote_kind::RemoteKind;
@@ -90,14 +92,18 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     if let Action::Init = &cli.action {
         println!("Action::Init: {}", path.display());
         if !path.is_dir() {
-            return Err(format!("desintation {} must be a directory", path.display()).into());
+            return Err(format!(
+                "desintation {} must be a directory",
+                path.display()
+            )
+            .into());
         }
         init::init(&path)?;
         return Ok(());
     }
 
-    let root_path =
-        get_root_path(&path).ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
+    let root_path = get_root_path(&path)
+        .ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
 
     let connection = Connection::open(repo_db_path(&root_path))?;
 

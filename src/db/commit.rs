@@ -25,7 +25,10 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn insert(connection: &Connection, commit: &Commit) -> Result<(), Box<dyn Error>> {
+pub fn insert(
+    connection: &Connection,
+    commit: &Commit,
+) -> Result<(), Box<dyn Error>> {
     println!("commit::insert: {}", commit.hash);
     connection.execute(
         "
@@ -45,7 +48,10 @@ pub fn insert(connection: &Connection, commit: &Commit) -> Result<(), Box<dyn Er
     Ok(())
 }
 
-pub fn get(connection: &Connection, hash: &str) -> Result<Commit, rusqlite::Error> {
+pub fn get(
+    connection: &Connection,
+    hash: &str,
+) -> Result<Commit, rusqlite::Error> {
     println!("commit::get: {}", hash);
     connection.query_row(
         "
@@ -69,7 +75,10 @@ pub fn get(connection: &Connection, hash: &str) -> Result<Commit, rusqlite::Erro
     )
 }
 
-pub fn get_all(connection: &Connection, hash: &str) -> Result<Vec<Commit>, rusqlite::Error> {
+pub fn get_all(
+    connection: &Connection,
+    hash: &str,
+) -> Result<Vec<Commit>, rusqlite::Error> {
     println!("commit::get_all: {}", hash);
     let mut statement = connection.prepare(
         "

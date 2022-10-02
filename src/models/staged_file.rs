@@ -13,7 +13,10 @@ pub struct StagedFile {
 }
 
 impl StagedFile {
-    pub fn new(full_path: &Path, relative_path: &Path) -> Result<Self, Box<dyn Error>> {
+    pub fn new(
+        full_path: &Path,
+        relative_path: &Path,
+    ) -> Result<Self, Box<dyn Error>> {
         let meta = lstat(full_path)?;
 
         let file_hash = hash_file(full_path)?;
@@ -41,6 +44,7 @@ impl StagedFile {
     // and modified_time. Use this function to help avoid expensive file hashes.
     pub fn compare_lstat(&self, path: &Path) -> Result<bool, Box<dyn Error>> {
         let meta = lstat(path)?;
-        Ok(self.size_bytes == meta.st_size && self.modified_time_seconds == meta.st_mtime)
+        Ok(self.size_bytes == meta.st_size
+            && self.modified_time_seconds == meta.st_mtime)
     }
 }

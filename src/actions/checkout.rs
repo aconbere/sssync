@@ -5,7 +5,10 @@ use rusqlite::Connection;
 use crate::db;
 use crate::tree;
 
-pub fn checkout(connection: &Connection, hash: &str) -> Result<(), Box<dyn Error>> {
+pub fn checkout(
+    connection: &Connection,
+    hash: &str,
+) -> Result<(), Box<dyn Error>> {
     let staged_files = db::staging::get_all(connection)?;
 
     if !staged_files.is_empty() {

@@ -51,7 +51,8 @@ pub async fn run(
             .join(".sssync/objects")
             .join(&upload.object_hash);
 
-        let local_object_path = root_path.join(".sssync/objects").join(&upload.object_hash);
+        let local_object_path =
+            root_path.join(".sssync/objects").join(&upload.object_hash);
 
         db::upload::set_state(connection, &upload, UploadState::Running)?;
         println!(
@@ -59,13 +60,28 @@ pub async fn run(
             local_object_path.display(),
             remote_object_path.display()
         );
-        match upload_multipart(&client, bucket, &remote_object_path, &local_object_path).await {
+        match upload_multipart(
+            &client,
+            bucket,
+            &remote_object_path,
+            &local_object_path,
+        )
+        .await
+        {
             Ok(_) => {
-                db::upload::set_state(connection, &upload, UploadState::Complete)?;
+                db::upload::set_state(
+                    connection,
+                    &upload,
+                    UploadState::Complete,
+                )?;
                 Ok(())
             }
             Err(e) => {
-                db::upload::set_state(connection, &upload, UploadState::Failed)?;
+                db::upload::set_state(
+                    connection,
+                    &upload,
+                    UploadState::Failed,
+                )?;
                 Err(e)
             }
         }?

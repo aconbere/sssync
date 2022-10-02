@@ -20,7 +20,10 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn update(connection: &Connection, meta: &Meta) -> Result<(), Box<dyn Error>> {
+pub fn update(
+    connection: &Connection,
+    meta: &Meta,
+) -> Result<(), Box<dyn Error>> {
     println!("meta::update");
     connection.execute(
         "

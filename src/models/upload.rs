@@ -1,4 +1,6 @@
-use rusqlite::types::{FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef};
+use rusqlite::types::{
+    FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef,
+};
 
 pub enum UploadState {
     Waiting,

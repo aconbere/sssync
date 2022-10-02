@@ -21,7 +21,10 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn insert(connection: &Connection, remote: &Remote) -> Result<(), Box<dyn Error>> {
+pub fn insert(
+    connection: &Connection,
+    remote: &Remote,
+) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
         INSERT INTO remotes (name, kind, location)
@@ -71,7 +74,10 @@ fn get_all_intermediate(
         .collect()
 }
 
-pub fn get(connection: &Connection, name: &str) -> Result<Remote, Box<dyn Error>> {
+pub fn get(
+    connection: &Connection,
+    name: &str,
+) -> Result<Remote, Box<dyn Error>> {
     let inter = get_intermediate(connection, name)?;
     Ok(Remote::new(&inter.name, inter.kind, &inter.location)?)
 }
@@ -100,7 +106,10 @@ fn get_intermediate(
     )
 }
 
-pub fn delete(connection: &Connection, name: &str) -> Result<(), rusqlite::Error> {
+pub fn delete(
+    connection: &Connection,
+    name: &str,
+) -> Result<(), rusqlite::Error> {
     let mut statement = connection.prepare(
         "
         DELETE

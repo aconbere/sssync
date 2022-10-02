@@ -31,7 +31,10 @@ pub fn hash_all(files: &Vec<File>) -> String {
     hash_string(files.iter().map(|f| f.file_hash.as_str()).collect())
 }
 
-pub fn copy_if_not_present(file: &File, root_path: &Path) -> Result<(), Box<dyn Error>> {
+pub fn copy_if_not_present(
+    file: &File,
+    root_path: &Path,
+) -> Result<(), Box<dyn Error>> {
     let full_path = root_path.join(&file.path);
 
     if !full_path.exists() {
