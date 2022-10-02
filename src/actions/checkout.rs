@@ -13,34 +13,11 @@ pub fn checkout(connection: &Connection, hash: &str) -> Result<(), Box<dyn Error
     }
 
     let meta = db::meta::get(connection)?;
-    let head = db::commit::get_by_ref_name(connection, &meta.head)?;
+    let head = db::commit::get_by_ref_name(connection, &meta.head)?
+        .ok_or("Head is bad - no matching ref name")?;
 
-    match head {
-        Some(head) => checkout_diff(connection, &head.hash, hash),
-        None => checkout_fresh(connection, hash),
-    }
-}
-
-fn checkout_fresh(connection: &Connection, hash: &str) -> Result<(), Box<dyn Error>> {
-    let commit = db::commit::get(connection, hash)?;
-    println!("checkout commit:");
-    let tree = db::tree::get(connection, &commit.hash)?;
-    println!("checkout tree: {}", tree.len());
-
-    tree.into_iter().for_each(|tree_entry| {
-        println!("file: {}:{}", tree_entry.path, tree_entry.file_hash);
-    });
-
-    Ok(())
-}
-
-fn checkout_diff(
-    connection: &Connection,
-    current_hash: &str,
-    new_hash: &str,
-) -> Result<(), Box<dyn Error>> {
-    let current_tree = db::tree::get(connection, current_hash)?;
-    let new_tree = db::tree::get(connection, new_hash)?;
+    let current_tree = db::tree::get(connection, &head.hash)?;
+    let new_tree = db::tree::get(connection, hash)?;
     let diff = tree::diff(&current_tree, &new_tree);
 
     for f in diff.additions {

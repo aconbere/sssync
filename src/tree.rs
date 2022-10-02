@@ -1,6 +1,10 @@
 use std::collections::{HashMap, HashSet};
+use std::error::Error;
+use std::fs;
+use std::path::Path;
 
 use crate::models::tree_file::TreeFile;
+use crate::store;
 
 #[derive(Debug, PartialEq)]
 pub struct DiffResult {
@@ -26,8 +30,6 @@ pub struct DiffResult {
 // Directionality is from older -> newer So for example if the newer set contains a file that isn't
 // found in the older. That file will end up in the additions set.
 pub fn diff(older: &Vec<TreeFile>, newer: &Vec<TreeFile>) -> DiffResult {
-    println!("diff older: {:?}", older);
-    println!("diff newer: {:?}", newer);
     let mut newer_set: HashMap<String, TreeFile> = HashMap::new();
 
     for tree_file in newer {
@@ -75,9 +77,21 @@ pub fn diff(older: &Vec<TreeFile>, newer: &Vec<TreeFile>) -> DiffResult {
     }
 }
 
-//pub fn apply(diff: &DiffResult) {
-//    for tf in additions {}
-//}
+pub fn apply_diff(root_path: &Path, diff: &DiffResult) -> Result<(), Box<dyn Error>> {
+    for a in &diff.additions {
+        let destination = root_path.join(&a.path);
+        store::copy_object(root_path, &a.file_hash, &destination)?;
+    }
+    for d in &diff.deletions {
+        let destination = root_path.join(&d.path);
+        fs::remove_file(destination)?;
+    }
+    for c in &diff.changes {
+        let destination = root_path.join(&c.path);
+        store::copy_object(root_path, &c.file_hash, &destination)?;
+    }
+    Ok(())
+}
 
 #[cfg(test)]
 mod tests {

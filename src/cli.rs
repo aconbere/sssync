@@ -153,7 +153,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             }
             Branch::Switch { name } => {
                 println!("Branch::Switch: {}", name);
-                branch::switch(&connection, name)
+                branch::switch(&connection, name, &root_path)
             }
             Branch::List => {
                 println!("Branch::List");
