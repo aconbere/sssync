@@ -55,6 +55,7 @@ pub async fn init(
         RemoteKind::S3 => {
             let client = make_client().await;
             let u = Url::parse(&remote.location)?;
+
             let bucket = u.host_str().unwrap();
             let remote_directory = Path::new(u.path()).join(&remote.name);
 
@@ -63,6 +64,7 @@ pub async fn init(
 
             let tree = db::tree::get(connection, &head.hash)?;
             let hashes = tree.iter().map(|t| t.file_hash.to_string()).collect();
+
             println!("Saving migration");
             let migration =
                 crate::migration::create(connection, MigrationKind::Upload, &remote.name, &hashes)?;
@@ -206,7 +208,7 @@ pub async fn fetch(
  * relevant remote objects (undefined as of yet).
  */
 #[allow(dead_code)]
-pub async fn sync_remote_state(
+pub async fn sync(
     connection: &Connection,
     root_path: &Path,
     remote_name: &str,

@@ -7,7 +7,6 @@ pub struct TreeFile {
     pub path: String,
     pub file_hash: String,
     pub size_bytes: i64,
-
     pub commit_hash: String,
 }
 

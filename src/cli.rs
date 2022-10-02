@@ -38,6 +38,9 @@ pub enum Remote {
     Fetch {
         name: String,
     },
+    Sync {
+        name: String,
+    },
     Remove {
         name: String,
     },
@@ -124,6 +127,12 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 rt.block_on(remote::push(&connection, &root_path, name))?;
                 Ok(())
             }
+            Remote::Sync { name } => {
+                println!("Remote::Sync");
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(remote::sync(&connection, &root_path, name))?;
+                Ok(())
+            }
             Remote::Fetch { name } => {
                 println!("Remote::Fetch");
                 let rt = tokio::runtime::Runtime::new().unwrap();
@@ -156,8 +165,9 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             commit::commit(&connection, &root_path)
         }
         Action::Status => {
-            println!("Action::Status");
-            status::status(&connection, &path)
+            let res = status::status(&connection, &path)?;
+            println!("{}", res);
+            Ok(())
         }
         Action::Init => {
             // handled above since it doesn't have a root_path yet

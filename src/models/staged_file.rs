@@ -4,12 +4,11 @@ use std::path::Path;
 use crate::hash::hash_file;
 use crate::models::file::{lstat, File};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StagedFile {
     pub path: String,
     pub file_hash: String,
     pub size_bytes: i64,
-
     pub modified_time_seconds: i64,
 }
 
@@ -37,9 +36,11 @@ impl StagedFile {
             size_bytes: self.size_bytes,
         }
     }
-}
 
-pub fn compare_file_meta(fe: &StagedFile, root_path: &Path) -> Result<bool, Box<dyn Error>> {
-    let meta = lstat(Path::new(&root_path.join(&fe.path)))?;
-    Ok(fe.size_bytes != meta.st_size || fe.modified_time_seconds != meta.st_mtime)
+    // Lstat the file found at path and compare the results to the StagedFile compares size_bytes
+    // and modified_time. Use this function to help avoid expensive file hashes.
+    pub fn compare_lstat(&self, path: &Path) -> Result<bool, Box<dyn Error>> {
+        let meta = lstat(path)?;
+        Ok(self.size_bytes == meta.st_size && self.modified_time_seconds == meta.st_mtime)
+    }
 }
