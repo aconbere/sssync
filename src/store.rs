@@ -33,13 +33,35 @@ pub fn get_root_path(path: &Path) -> Option<&Path> {
     }
 }
 
-pub fn copy_object(
+pub fn exists(root_path: &Path, hash: &str) -> bool {
+    let p = object_path(root_path, hash);
+    p.exists()
+}
+
+// Writes the contents of the store indexed by hash to the file
+// at the path destination.
+pub fn export_to(
     root_path: &Path,
     hash: &str,
     destination: &Path,
 ) -> Result<(), Box<dyn Error>> {
     let p = object_path(root_path, hash);
     fs::copy(p, destination)?;
+    Ok(())
+}
+
+// Writes the contents of the file found at source into the store
+// with the hash hash.
+pub fn insert_from(
+    root_path: &Path,
+    hash: &str,
+    source: &Path,
+) -> Result<(), Box<dyn Error>> {
+    let p = object_path(root_path, hash);
+
+    if !p.exists() {
+        fs::copy(source, p)?;
+    }
     Ok(())
 }
 

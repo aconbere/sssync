@@ -7,7 +7,7 @@ use crate::models::tree_file::TreeFile;
 use crate::store;
 
 #[derive(Debug, PartialEq)]
-pub struct DiffResult {
+pub struct TreeDiff {
     pub additions: Vec<TreeFile>,
     pub deletions: Vec<TreeFile>,
     pub changes: Vec<TreeFile>,
@@ -29,7 +29,7 @@ pub struct DiffResult {
 //
 // Directionality is from older -> newer So for example if the newer set contains a file that isn't
 // found in the older. That file will end up in the additions set.
-pub fn diff(older: &Vec<TreeFile>, newer: &Vec<TreeFile>) -> DiffResult {
+pub fn diff(older: &Vec<TreeFile>, newer: &Vec<TreeFile>) -> TreeDiff {
     let mut newer_set: HashMap<String, TreeFile> = HashMap::new();
 
     for tree_file in newer {
@@ -70,7 +70,7 @@ pub fn diff(older: &Vec<TreeFile>, newer: &Vec<TreeFile>) -> DiffResult {
         }
     }
 
-    DiffResult {
+    TreeDiff {
         additions: additions,
         deletions: deletions,
         changes: changes,
@@ -79,11 +79,11 @@ pub fn diff(older: &Vec<TreeFile>, newer: &Vec<TreeFile>) -> DiffResult {
 
 pub fn apply_diff(
     root_path: &Path,
-    diff: &DiffResult,
+    diff: &TreeDiff,
 ) -> Result<(), Box<dyn Error>> {
     for a in &diff.additions {
         let destination = root_path.join(&a.path);
-        store::copy_object(root_path, &a.file_hash, &destination)?;
+        store::export_to(root_path, &a.file_hash, &destination)?;
     }
     for d in &diff.deletions {
         let destination = root_path.join(&d.path);
@@ -91,7 +91,7 @@ pub fn apply_diff(
     }
     for c in &diff.changes {
         let destination = root_path.join(&c.path);
-        store::copy_object(root_path, &c.file_hash, &destination)?;
+        store::export_to(root_path, &c.file_hash, &destination)?;
     }
     Ok(())
 }
@@ -109,7 +109,7 @@ mod tests {
         let result = diff(&newer, &older);
         assert_eq!(
             result,
-            DiffResult {
+            TreeDiff {
                 additions: vec![],
                 deletions: vec![],
                 changes: vec![],

@@ -88,10 +88,10 @@ pub fn diff(
     connection: &Connection,
     older: &Commit,
     newer: &Commit,
-) -> Result<tree::DiffResult, Box<dyn Error>> {
+) -> Result<tree::TreeDiff, Box<dyn Error>> {
     if older.hash == newer.hash {
         println!("db::tree::diff no diff");
-        return Ok(tree::DiffResult {
+        return Ok(tree::TreeDiff {
             additions: vec![],
             deletions: vec![],
             changes: vec![],

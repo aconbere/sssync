@@ -7,40 +7,10 @@ use std::path::{Path, PathBuf};
 
 use errno::errno;
 
-use crate::hash::hash_string;
-use crate::store;
-
-#[derive(PartialEq, Eq, Hash, Clone)]
-pub struct File {
-    pub path: String,
-    pub file_hash: String,
-    pub size_bytes: i64,
-}
-
-impl File {
-    pub fn new(path: &str, file_hash: &str, size_bytes: i64) -> Self {
-        Self {
-            path: path.to_string(),
-            file_hash: file_hash.to_string(),
-            size_bytes: size_bytes,
-        }
-    }
-}
-
-pub fn hash_all(files: &Vec<File>) -> String {
-    hash_string(files.iter().map(|f| f.file_hash.as_str()).collect())
-}
-
-pub fn copy_if_not_present(
-    file: &File,
-    root_path: &Path,
-) -> Result<(), Box<dyn Error>> {
-    let full_path = root_path.join(&file.path);
-
-    if !full_path.exists() {
-        fs::copy(full_path, store::object_path(root_path, &file.file_hash))?;
-    }
-    Ok(())
+pub trait File {
+    fn path(&self) -> String;
+    fn file_hash(&self) -> String;
+    fn size_bytes(&self) -> i64;
 }
 
 fn default_ignore() -> HashSet<String> {
