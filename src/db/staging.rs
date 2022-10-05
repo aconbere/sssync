@@ -28,18 +28,16 @@ pub fn insert(
     change: &Change,
 ) -> Result<(), Box<dyn Error>> {
     let params = match change {
-        Change::Addition(sf) => {
-            params![
-                ChangeKind::Addition,
-                sf.file_hash,
-                sf.path,
-                sf.size_bytes,
-                sf.modified_time_seconds
-            ]
-        }
+        Change::Addition(sf) => (
+            ChangeKind::Addition,
+            sf.file_hash.as_str(),
+            sf.path.as_str(),
+            sf.size_bytes,
+            sf.modified_time_seconds,
+        ),
         Change::Deletion(p) => {
-            let path_str = String::from(p.to_str().unwrap());
-            params![ChangeKind::Deletion, "", path_str, 0, 0,]
+            let path_str = p.to_str().unwrap();
+            (ChangeKind::Deletion, "", path_str, 0, 0)
         }
     };
     connection.execute(
