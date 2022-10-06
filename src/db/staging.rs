@@ -10,9 +10,9 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
         "
         CREATE TABLE
             staging (
+                path TEXT PRIMARY KEY,
                 kind TEXT,
-                path TEXT NOT NULL,
-                file_hash TEXT PRIMARY KEY,
+                file_hash TEXT,
                 size_bytes INTEGER NOT NULL,
                 modified_time_seconds INTEGER NOT NULL
             )
@@ -29,33 +29,34 @@ pub fn insert(
 ) -> Result<(), Box<dyn Error>> {
     let params = match change {
         Change::Addition(sf) => (
+            sf.path.as_str(),
             ChangeKind::Addition,
             sf.file_hash.as_str(),
-            sf.path.as_str(),
             sf.size_bytes,
             sf.modified_time_seconds,
         ),
         Change::Deletion(p) => {
             let path_str = p.to_str().unwrap();
-            (ChangeKind::Deletion, "", path_str, 0, 0)
+            (path_str, ChangeKind::Deletion, "", 0, 0)
         }
     };
     connection.execute(
         "
         INSERT INTO
             staging (
-                kind,
                 path,
+                kind,
                 file_hash,
                 size_bytes,
                 modified_time_seconds
             )
         VALUES
             (?1, ?2, ?3, ?4, ?5)
-        ON CONFLICT (kind, file_hash)
+        ON CONFLICT (path)
         DO UPDATE
         SET
-            path = excluded.path,
+            kind = excluded.kind,
+            file_hash = excluded.file_hash,
             size_bytes = excluded.size_bytes,
             modified_time_seconds = excluded.modified_time_seconds
         ",
@@ -69,9 +70,9 @@ pub fn get_all(connection: &Connection) -> Result<Vec<Change>, Box<dyn Error>> {
     let mut stmt = connection.prepare(
         "
             SELECT
+                path,
                 kind,
                 file_hash,
-                path,
                 size_bytes,
                 modified_time_seconds
             FROM
@@ -80,15 +81,15 @@ pub fn get_all(connection: &Connection) -> Result<Vec<Change>, Box<dyn Error>> {
     )?;
 
     let entries: Vec<Change> = stmt
-        .query_map([], |row| match row.get(0)? {
+        .query_map([], |row| match row.get(1)? {
             ChangeKind::Addition => Ok(Change::Addition(StagedFile {
-                file_hash: row.get(1)?,
-                path: row.get(2)?,
+                path: row.get(0)?,
+                file_hash: row.get(2)?,
                 size_bytes: row.get(3)?,
                 modified_time_seconds: row.get(4)?,
             })),
             ChangeKind::Deletion => {
-                let p: String = row.get(2)?;
+                let p: String = row.get(0)?;
                 Ok(Change::Deletion(PathBuf::from(p)))
             }
         })?

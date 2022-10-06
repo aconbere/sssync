@@ -38,7 +38,6 @@ pub fn update(
 }
 
 pub fn get(connection: &Connection) -> Result<Meta, rusqlite::Error> {
-    println!("meta::get");
     connection.query_row(
         "
         SELECT

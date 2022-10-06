@@ -35,11 +35,9 @@ fn get_all_inner(
     rel_path: PathBuf,
     ignore: &HashSet<String>,
 ) -> Result<Vec<PathBuf>, Box<dyn Error>> {
-    println!("all_files: {} {}", root.display(), rel_path.display());
     let mut results: Vec<PathBuf> = Vec::new();
 
     if should_ignore(ignore, &rel_path) {
-        println!("ignoring: {}", rel_path.display());
         return Ok(results);
     }
     let contents = fs::read_dir(root)?;

@@ -57,8 +57,12 @@ pub enum Action {
     Log,
     Commit,
     Status,
-    Init,
-    Add,
+    Init {
+        path: PathBuf,
+    },
+    Add {
+        path: PathBuf,
+    },
     Tree {
         hash: String,
     },
@@ -75,7 +79,6 @@ pub enum Action {
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 pub struct Cli {
-    path: Option<PathBuf>,
     #[clap(subcommand)]
     action: Action,
 }
@@ -83,27 +86,9 @@ pub struct Cli {
 pub fn run() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
 
-    let path = cli
-        .path
-        .as_deref()
-        .unwrap_or(Path::new("."))
-        .canonicalize()?;
-
-    if let Action::Init = &cli.action {
-        println!("Action::Init: {}", path.display());
-        if !path.is_dir() {
-            return Err(format!(
-                "desintation {} must be a directory",
-                path.display()
-            )
-            .into());
-        }
-        init::init(&path)?;
-        return Ok(());
-    }
-
-    let root_path = get_root_path(&path)
-        .ok_or(format!("not in a sssync'd directory: {}", path.display()))?;
+    let pwd = Path::new(".").canonicalize()?;
+    let root_path = get_root_path(&pwd)
+        .ok_or(format!("not in a sssync'd directory: {}", pwd.display()))?;
 
     let connection = Connection::open(repo_db_path(&root_path))?;
 
@@ -113,89 +98,64 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 name,
                 kind,
                 location,
-            } => {
-                println!("Remote::Add: {} {} {}", name, kind, location);
-                remote::add(&connection, name, kind, location)
-            }
-            Remote::List => {
-                println!("Remote::List");
-                remote::list(&connection)
-            }
+            } => remote::add(&connection, name, kind, location),
+            Remote::List => remote::list(&connection),
             Remote::Init { name } => {
-                println!("Remote::Init");
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(remote::init(&connection, &root_path, name))?;
                 Ok(())
             }
             Remote::Push { name } => {
-                println!("Remote::Push");
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(remote::push(&connection, &root_path, name))?;
                 Ok(())
             }
             Remote::Sync { name } => {
-                println!("Remote::Sync");
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(remote::sync(&connection, &root_path, name))?;
                 Ok(())
             }
             Remote::Fetch { name } => {
-                println!("Remote::Fetch");
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(remote::fetch(&connection, &root_path, name))?;
                 Ok(())
             }
             Remote::Remove { name } => {
-                println!("Remote::Remove");
-                println!("Removing remote {}", name);
                 remote::remove(&connection, name)?;
                 Ok(())
             }
         },
         Action::Branch { action } => match action {
-            Branch::Add { name } => {
-                println!("Branch::Add: {}", name);
-                branch::add(&connection, name, None)
-            }
+            Branch::Add { name } => branch::add(&connection, name, None),
             Branch::Switch { name } => {
-                println!("Branch::Switch: {}", name);
                 branch::switch(&connection, name, &root_path)
             }
-            Branch::List => {
-                println!("Branch::List");
-                branch::list(&connection)
-            }
+            Branch::List => branch::list(&connection),
         },
-        Action::Commit => {
-            println!("Action::Commit");
-            commit::commit(&connection, &root_path)
-        }
+        Action::Commit => commit::commit(&connection, &root_path),
         Action::Status => {
-            let res = status::status(&connection, &path)?;
-            println!("{}", res);
+            status::status(&connection, &root_path)?;
             Ok(())
         }
-        Action::Init => {
-            // handled above since it doesn't have a root_path yet
+        Action::Init { path } => {
+            if !path.is_dir() {
+                return Err(format!(
+                    "desintation {} must be a directory",
+                    path.display()
+                )
+                .into());
+            }
+            init::init(&path)?;
             Ok(())
         }
-        Action::Add => {
-            println!("Action::Add");
-            let rel_path = path.strip_prefix(root_path)?;
-            add::add(&connection, &path, &root_path, &rel_path)
+        Action::Add { path } => {
+            let cp = path.canonicalize()?;
+            let rel_path = cp.strip_prefix(root_path)?;
+            add::add(&connection, &root_path, &rel_path)
         }
-        Action::Log => {
-            println!("Action::Log");
-            log::log(&connection)
-        }
+        Action::Log => log::log(&connection),
         Action::Checkout { hash } => checkout::checkout(&connection, hash),
-        Action::Reset => {
-            println!("Action::Reset");
-            reset::reset(&connection, &path)
-        }
-        Action::Tree { hash } => {
-            println!("Action::Tree");
-            tree::tree(&connection, hash)
-        }
+        Action::Reset => reset::reset(&connection, &root_path),
+        Action::Tree { hash } => tree::tree(&connection, hash),
     }
 }

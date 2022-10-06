@@ -49,7 +49,7 @@ pub fn hash_all(files: &Vec<&IntermediateTree>) -> String {
 pub struct Status {
     /* The set of files tracked at HEAD
      */
-    pub tracked_files: HashMap<PathBuf, IntermediateTree>,
+    pub tracked_files: HashMap<PathBuf, TreeFile>,
     /* Staged changes can be either additions or deletions:
      *
      * For ease of use later we'll move them into hash sets for both additions and deletions.
@@ -94,7 +94,6 @@ impl fmt::Display for Status {
                 }
             }
         }
-        write!(w, "\n")?;
 
         if !self.staged_deletions.is_empty() {
             write!(w, "Files staged to be deleted:\n")?;
@@ -106,7 +105,6 @@ impl fmt::Display for Status {
                 }
             }
         }
-        write!(w, "\n")?;
 
         if !self.unstaged_additions.is_empty() {
             write!(w, "Unstaged additions:\n")?;
@@ -143,14 +141,11 @@ impl Status {
         let head = db::commit::get_by_ref_name(connection, &meta.head)?;
 
         /* Tracked files are files that are already in the store. */
-        let tracked_files: HashMap<PathBuf, IntermediateTree> = match &head {
+        let tracked_files: HashMap<PathBuf, TreeFile> = match &head {
             Some(head) => HashMap::from_iter(
-                db::tree::get(connection, &head.hash)?.iter().map(|tf| {
-                    (
-                        PathBuf::from(tf.path.clone()),
-                        IntermediateTree::Committed(tf.clone()),
-                    )
-                }),
+                db::tree::get(connection, &head.hash)?
+                    .iter()
+                    .map(|tf| (PathBuf::from(tf.path.clone()), tf.clone())),
             ),
             None => HashMap::new(),
         };
@@ -206,10 +201,36 @@ impl Status {
             }
         });
 
+        // Note - bug - should compare the lstat of df against the tracked
+        // file if the tracked file exists.
         disk_files.iter().for_each(|df| {
-            if !staged_additions.contains(df) && !tracked_files.contains_key(df)
-            {
-                unstaged_additions.push(df.clone())
+            if !staged_additions.contains(df) {
+                if !tracked_files.contains_key(df) {
+                    unstaged_additions.push(df.clone());
+                    return;
+                }
+
+                // at this point I need a way to cheaply compare
+                // a tracked file and a disk file. Staged files
+                // contain a modified time, but tracked files don't
+                // given that, I think the best we can do here is
+                // checking the size_bytes? Or kick off an expensive
+                // hash?
+                //
+                //
+                // Maybe I should consider a cheapper hash like md5
+                // just as a backup for situations like this?
+                let tf = tracked_files.get(df).unwrap();
+
+                let meta = file::lstat(df);
+
+                if meta.is_err() {
+                    return;
+                }
+
+                if tf.size_bytes != meta.unwrap().st_size {
+                    unstaged_additions.push(df.clone());
+                }
             }
         });
 

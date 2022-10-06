@@ -1,4 +1,5 @@
 use rusqlite::Connection;
+use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
 
@@ -25,7 +26,18 @@ pub fn commit(
 
     let staged_changes = db::staging::get_all(connection)?;
 
-    let mut new_tree = status.tracked_files.clone();
+    // This map will end up collecting together both the tracked set of files
+    // as well as the staged files. Then we can add or remove files by path
+    // as we work through staged additions and deletions.
+    //
+    // IntermediatTree is just an enum that let's us work on top of two types
+    // of files with slightly different data. (Note: I should put these
+    // all together to make them easier to work on)
+    let mut new_tree: HashMap<PathBuf, IntermediateTree> = status
+        .tracked_files
+        .iter()
+        .map(|(pb, tf)| (pb.clone(), IntermediateTree::Committed(tf.clone())))
+        .collect();
 
     for a in staged_changes {
         match a {

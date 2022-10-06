@@ -10,28 +10,38 @@ use crate::store;
 
 pub fn add(
     connection: &Connection,
-    full_path: &Path,
     root_path: &Path,
     rel_path: &Path,
 ) -> Result<(), Box<dyn Error>> {
-    let meta = db::meta::get(connection)?;
-    let head = db::commit::get_by_ref_name(connection, &meta.head)?;
+    if rel_path == Path::new("") {
+        let status = Status::new(connection, root_path)?;
 
-    let status = Status::new(connection, root_path)?;
+        for ua in status.unstaged_additions {
+            let staged_file =
+                staged_file::StagedFile::new(&root_path.join(&ua), &ua)?;
+            store::insert_from(root_path, &staged_file.file_hash, &ua)?;
+            db::staging::insert(
+                connection,
+                &staged_file::Change::Addition(staged_file),
+            )?;
+        }
 
-    for ua in status.unstaged_additions {
-        let staged_file =
-            staged_file::StagedFile::new(&root_path.join(&ua), &ua)?;
-        store::insert_from(root_path, &staged_file.file_hash, &ua)?;
-        db::staging::insert(
-            connection,
-            &staged_file::Change::Addition(staged_file),
-        )?;
+        for ua in status.unstaged_deletions {
+            db::staging::insert(
+                connection,
+                &staged_file::Change::Deletion(ua),
+            )?;
+        }
+        return Ok(());
     }
 
-    for ua in status.unstaged_deletions {
-        db::staging::insert(connection, &staged_file::Change::Deletion(ua))?;
-    }
+    let staged_file =
+        staged_file::StagedFile::new(&root_path.join(&rel_path), &rel_path)?;
+    store::insert_from(root_path, &staged_file.file_hash, &rel_path)?;
+    db::staging::insert(
+        connection,
+        &staged_file::Change::Addition(staged_file),
+    )?;
 
     Ok(())
 }

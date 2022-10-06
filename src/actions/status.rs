@@ -15,6 +15,8 @@ use rusqlite::Connection;
 pub fn status(
     connection: &Connection,
     root_path: &Path,
-) -> Result<Status, Box<dyn Error>> {
-    Status::new(connection, root_path)
+) -> Result<(), Box<dyn Error>> {
+    let res = Status::new(connection, root_path)?;
+    print!("{}", res);
+    Ok(())
 }
