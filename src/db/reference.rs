@@ -88,3 +88,28 @@ pub fn get_all_by_kind(
         .flat_map(|e| e)
         .collect()
 }
+
+pub fn get(
+    connection: &Connection,
+    name: &str,
+) -> Result<Reference, rusqlite::Error> {
+    let mut statement = connection.prepare(
+        "
+        SELECT
+            name,
+            kind,
+            hash
+        FROM
+            refs
+        WHERE
+            name = ?1
+        ",
+    )?;
+    statement.query_row(params![name], |row| {
+        Ok(Reference {
+            name: row.get(0)?,
+            kind: row.get(1)?,
+            hash: row.get(2)?,
+        })
+    })
+}

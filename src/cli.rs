@@ -135,7 +135,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         Action::Branch { action } => match action {
             Branch::Add { name } => branch::add(&connection, name, None),
             Branch::Switch { name } => {
-                branch::switch(&connection, name, &root_path)
+                branch::switch(&connection, &root_path, name)
             }
             Branch::List => branch::list(&connection),
         },

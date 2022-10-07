@@ -5,6 +5,7 @@ use rusqlite::Connection;
 
 use crate::db;
 use crate::models;
+use crate::models::meta::Meta;
 use crate::tree;
 
 pub fn add(
@@ -34,8 +35,8 @@ pub fn add(
 
 pub fn switch(
     connection: &Connection,
-    name: &str,
     root_path: &Path,
+    name: &str,
 ) -> Result<(), Box<dyn Error>> {
     let staged_files = db::staging::get_all(connection)?;
 
@@ -43,17 +44,17 @@ pub fn switch(
         return Err("There are currently staged files: Commit your current work or reset your state to continue".into());
     }
 
-    let commit = db::commit::get_by_ref_name(connection, name)?
-        .ok_or("Could not find hash for ref")?;
+    let reference = db::reference::get(connection, name)?;
+    let commit = db::commit::get(connection, &reference.hash)?;
     let future_tree = db::tree::get(connection, &commit.hash)?;
-
     let meta = db::meta::get(connection)?;
     let head = db::commit::get_by_ref_name(connection, &meta.head)?
         .ok_or("Head is bad - no matching ref name")?;
     let current_tree = db::tree::get(connection, &head.hash)?;
 
     let diff = tree::diff(&current_tree, &future_tree);
-    tree::apply_diff(root_path, &diff)
+    tree::apply_diff(root_path, &diff)?;
+    db::meta::update(connection, &Meta::new(&reference.name))
 }
 
 pub fn list(connection: &Connection) -> Result<(), Box<dyn Error>> {
