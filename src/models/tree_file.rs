@@ -25,17 +25,12 @@ impl Hash for TreeFile {
 }
 
 impl TreeFile {
-    pub fn new(
-        path: &str,
-        file_hash: &str,
-        size_bytes: i64,
-        commit_hash: &str,
-    ) -> Self {
+    pub fn update_commit_hash(&self, commit_hash: &str) -> Self {
         Self {
-            path: path.to_string(),
-            file_hash: file_hash.to_string(),
-            size_bytes: size_bytes,
-            commit_hash: commit_hash.to_string(),
+            path: self.path.clone(),
+            file_hash: self.file_hash.clone(),
+            size_bytes: self.size_bytes.clone(),
+            commit_hash: String::from(commit_hash),
         }
     }
 }

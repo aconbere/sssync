@@ -26,13 +26,16 @@ pub fn commit(
 
     let staged_changes = db::staging::get_all(connection)?;
 
-    // This map will end up collecting together both the tracked set of files
-    // as well as the staged files. Then we can add or remove files by path
-    // as we work through staged additions and deletions.
+    // This map will end up collecting together both the tracked set of files as well as the staged
+    // files. Then we can add or remove files by path as we work through staged additions and
+    // deletions.
     //
-    // IntermediatTree is just an enum that let's us work on top of two types
-    // of files with slightly different data. (Note: I should put these
-    // all together to make them easier to work on)
+    // IntermediatTree is just an enum that let's us work on top of two types of files with
+    // slightly different data. (Note: I should put these all together to make them easier to work
+    // on)
+    //
+    // NOTE! These tree files will have the commit hash of the parent commit They need to have that
+    // updated before saving them or they will point to the wrong commit.
     let mut new_tree: HashMap<PathBuf, IntermediateTree> = status
         .tracked_files
         .iter()
@@ -58,8 +61,7 @@ pub fn commit(
         }
     }
 
-    let new_tree_vec: Vec<&IntermediateTree> =
-        new_tree.iter().map(|(_, i_f)| i_f).collect();
+    let new_tree_vec: Vec<IntermediateTree> = new_tree.into_values().collect();
 
     let hash = hash_all(&new_tree_vec);
     let commit = Commit::new(&hash, "", "", parent_hash)?;

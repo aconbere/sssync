@@ -87,9 +87,16 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse();
 
     let pwd = Path::new(".").canonicalize()?;
+
+    // Init isn't expected to be run with a valid root_path. We're special casing init so that we
+    // can provide convenient access to root_path for all the other commands.
+    if let Action::Init { path } = &cli.action {
+        init::init(path)?;
+        return Ok(());
+    }
+
     let root_path = get_root_path(&pwd)
         .ok_or(format!("not in a sssync'd directory: {}", pwd.display()))?;
-
     let connection = Connection::open(repo_db_path(&root_path))?;
 
     match &cli.action {
@@ -138,14 +145,9 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             Ok(())
         }
         Action::Init { path } => {
-            if !path.is_dir() {
-                return Err(format!(
-                    "desintation {} must be a directory",
-                    path.display()
-                )
-                .into());
-            }
-            init::init(&path)?;
+            // This isn't expected to be run ever, it's special cased at the start
+            // but keeping it here means we still get type checking on enum coverage.
+            println!("Action::Init {}", path.display());
             Ok(())
         }
         Action::Add { path } => {

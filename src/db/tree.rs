@@ -47,10 +47,10 @@ pub fn insert(
 
 pub fn insert_batch(
     connection: &Connection,
-    tree_entries: Vec<TreeFile>,
+    tree_files: Vec<TreeFile>,
 ) -> Result<(), Box<dyn Error>> {
-    for tree_entry in tree_entries {
-        insert(connection, &tree_entry)?;
+    for tf in tree_files {
+        insert(connection, &tf)?;
     }
     Ok(())
 }

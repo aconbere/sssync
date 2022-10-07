@@ -22,19 +22,21 @@ pub enum IntermediateTree {
 }
 
 pub fn intermediate_to_tree_files(
-    files: &Vec<&IntermediateTree>,
+    files: &Vec<IntermediateTree>,
     commit_hash: &str,
 ) -> Vec<TreeFile> {
     files
         .into_iter()
         .map(|i_f| match i_f {
             IntermediateTree::Staged(sf) => sf.to_tree_file(&commit_hash),
-            IntermediateTree::Committed(tf) => tf.clone(),
+            IntermediateTree::Committed(tf) => {
+                tf.update_commit_hash(&commit_hash)
+            }
         })
         .collect()
 }
 
-pub fn hash_all(files: &Vec<&IntermediateTree>) -> String {
+pub fn hash_all(files: &Vec<IntermediateTree>) -> String {
     let hashes: Vec<&str> = files
         .into_iter()
         .map(|f| match f {
@@ -82,7 +84,10 @@ pub struct Status {
 
 impl fmt::Display for Status {
     fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+        write!(w, "On branch: {}\n", self.ref_name)?;
+
         if !self.staged_additions.is_empty() {
+            write!(w, "\n")?;
             write!(w, "Files staged to be added:\n")?;
             for f in &self.staged_additions {
                 if self.staged_but_changed.contains(f) {
@@ -96,6 +101,7 @@ impl fmt::Display for Status {
         }
 
         if !self.staged_deletions.is_empty() {
+            write!(w, "\n")?;
             write!(w, "Files staged to be deleted:\n")?;
             for f in &self.staged_deletions {
                 if self.staged_but_added.contains(f) {
@@ -107,6 +113,7 @@ impl fmt::Display for Status {
         }
 
         if !self.unstaged_additions.is_empty() {
+            write!(w, "\n")?;
             write!(w, "Unstaged additions:\n")?;
             for f in &self.unstaged_additions {
                 write!(w, "\tmodified: {}\n", f.to_str().unwrap())?;
@@ -114,6 +121,7 @@ impl fmt::Display for Status {
         }
 
         if !self.unstaged_deletions.is_empty() {
+            write!(w, "\n")?;
             write!(w, "Unstaged deletions:\n")?;
             for f in &self.unstaged_deletions {
                 write!(w, "\tdeleted: {}\n", f.to_str().unwrap())?;
