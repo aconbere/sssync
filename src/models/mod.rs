@@ -1,6 +1,5 @@
 pub mod commit;
 pub mod file;
-pub mod index;
 pub mod meta;
 pub mod migration;
 pub mod reference;

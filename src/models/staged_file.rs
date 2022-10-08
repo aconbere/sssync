@@ -8,48 +8,6 @@ use rusqlite::types::{
     FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef,
 };
 
-pub enum ChangeKind {
-    Addition,
-    Deletion,
-}
-
-impl ChangeKind {
-    pub fn parse(s: &str) -> Result<ChangeKind, String> {
-        match s {
-            "addition" => Ok(ChangeKind::Addition),
-            "deletion" => Ok(ChangeKind::Deletion),
-            _ => Err(format!("invalid kind: {}", s)),
-        }
-    }
-
-    pub fn to_str(&self) -> &str {
-        match self {
-            ChangeKind::Addition => "addition",
-            ChangeKind::Deletion => "deletion",
-        }
-    }
-}
-
-impl FromSql for ChangeKind {
-    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
-        value.as_str().and_then(|s| match ChangeKind::parse(s) {
-            Ok(rk) => Ok(rk),
-            Err(_) => Err(FromSqlError::InvalidType),
-        })
-    }
-}
-
-impl ToSql for ChangeKind {
-    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
-        Ok(ToSqlOutput::from(self.to_str()))
-    }
-}
-
-pub enum Change {
-    Addition(StagedFile),
-    Deletion(PathBuf),
-}
-
 #[derive(Debug, Clone)]
 pub struct StagedFile {
     pub path: String,
@@ -95,4 +53,46 @@ impl StagedFile {
         Ok(self.size_bytes == meta.st_size
             && self.modified_time_seconds == meta.st_mtime)
     }
+}
+
+pub enum ChangeKind {
+    Addition,
+    Deletion,
+}
+
+impl ChangeKind {
+    pub fn parse(s: &str) -> Result<ChangeKind, String> {
+        match s {
+            "addition" => Ok(ChangeKind::Addition),
+            "deletion" => Ok(ChangeKind::Deletion),
+            _ => Err(format!("invalid kind: {}", s)),
+        }
+    }
+
+    pub fn to_str(&self) -> &str {
+        match self {
+            ChangeKind::Addition => "addition",
+            ChangeKind::Deletion => "deletion",
+        }
+    }
+}
+
+impl FromSql for ChangeKind {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        value.as_str().and_then(|s| match ChangeKind::parse(s) {
+            Ok(rk) => Ok(rk),
+            Err(_) => Err(FromSqlError::InvalidType),
+        })
+    }
+}
+
+impl ToSql for ChangeKind {
+    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+        Ok(ToSqlOutput::from(self.to_str()))
+    }
+}
+
+pub enum Change {
+    Addition(StagedFile),
+    Deletion(PathBuf),
 }

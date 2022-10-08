@@ -33,11 +33,6 @@ pub fn get_root_path(path: &Path) -> Option<&Path> {
     }
 }
 
-pub fn exists(root_path: &Path, hash: &str) -> bool {
-    let p = object_path(root_path, hash);
-    p.exists()
-}
-
 // Writes the contents of the store indexed by hash to the file
 // at the path destination.
 pub fn export_to(

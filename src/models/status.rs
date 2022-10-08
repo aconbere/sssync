@@ -1,6 +1,5 @@
 use std::fmt;
 
-use crate::models::staged_file::Change;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::path::{Path, PathBuf};
@@ -10,44 +9,15 @@ use rusqlite::Connection;
 use crate::db;
 use crate::models::commit::Commit;
 use crate::models::file;
-use crate::models::staged_file::StagedFile;
+use crate::models::staged_file::{Change, StagedFile};
 use crate::models::tree_file::TreeFile;
 
 use crate::hash::hash_string;
 
-#[derive(Clone, Debug)]
-pub enum IntermediateTree {
-    Staged(StagedFile),
-    Committed(TreeFile),
-}
-
-pub fn intermediate_to_tree_files(
-    files: &Vec<IntermediateTree>,
-    commit_hash: &str,
-) -> Vec<TreeFile> {
-    files
-        .into_iter()
-        .map(|i_f| match i_f {
-            IntermediateTree::Staged(sf) => sf.to_tree_file(&commit_hash),
-            IntermediateTree::Committed(tf) => {
-                tf.update_commit_hash(&commit_hash)
-            }
-        })
-        .collect()
-}
-
-pub fn hash_all(files: &Vec<IntermediateTree>) -> String {
-    let hashes: Vec<&str> = files
-        .into_iter()
-        .map(|f| match f {
-            IntermediateTree::Staged(sf) => sf.file_hash.as_str(),
-            IntermediateTree::Committed(tf) => tf.file_hash.as_str(),
-        })
-        .collect();
-
-    hash_string(hashes.join(""))
-}
-
+/* Status is a struct that contains derived information about the current repository. It's the
+ * struct that is responsible for printing the "status" command, but it's also used in a number of
+ * places where knowing things like unstaged changes is useful.
+ */
 pub struct Status {
     /* The set of files tracked at HEAD
      */
@@ -261,4 +231,37 @@ impl Status {
             ref_name: meta.head,
         })
     }
+}
+
+#[derive(Clone, Debug)]
+pub enum IntermediateTree {
+    Staged(StagedFile),
+    Committed(TreeFile),
+}
+
+pub fn intermediate_to_tree_files(
+    files: &Vec<IntermediateTree>,
+    commit_hash: &str,
+) -> Vec<TreeFile> {
+    files
+        .into_iter()
+        .map(|i_f| match i_f {
+            IntermediateTree::Staged(sf) => sf.to_tree_file(&commit_hash),
+            IntermediateTree::Committed(tf) => {
+                tf.update_commit_hash(&commit_hash)
+            }
+        })
+        .collect()
+}
+
+pub fn hash_all(files: &Vec<IntermediateTree>) -> String {
+    let hashes: Vec<&str> = files
+        .into_iter()
+        .map(|f| match f {
+            IntermediateTree::Staged(sf) => sf.file_hash.as_str(),
+            IntermediateTree::Committed(tf) => tf.file_hash.as_str(),
+        })
+        .collect();
+
+    hash_string(hashes.join(""))
 }

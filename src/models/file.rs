@@ -7,12 +7,6 @@ use std::path::{Path, PathBuf};
 
 use errno::errno;
 
-pub trait File {
-    fn path(&self) -> String;
-    fn file_hash(&self) -> String;
-    fn size_bytes(&self) -> i64;
-}
-
 fn default_ignore() -> HashSet<String> {
     let mut ignore = HashSet::new();
     ignore.insert(".sssync".to_string());

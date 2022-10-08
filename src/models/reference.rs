@@ -2,6 +2,27 @@ use rusqlite::types::{
     FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef,
 };
 
+/* A reference is a name attached to a commit.
+ *
+ * Right now the only supported kind of reference is a branch.
+ */
+pub struct Reference {
+    pub name: String,
+    pub kind: Kind,
+    pub hash: String,
+}
+
+impl Reference {
+    #[allow(dead_code)]
+    pub fn new(name: &str, kind: Kind, hash: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            kind: kind,
+            hash: hash.to_string(),
+        }
+    }
+}
+
 pub enum Kind {
     Branch,
 }
@@ -33,22 +54,5 @@ impl FromSql for Kind {
 impl ToSql for Kind {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
         Ok(ToSqlOutput::from(self.to_str()))
-    }
-}
-
-pub struct Reference {
-    pub name: String,
-    pub kind: Kind,
-    pub hash: String,
-}
-
-impl Reference {
-    #[allow(dead_code)]
-    pub fn new(name: &str, kind: Kind, hash: &str) -> Self {
-        Self {
-            name: name.to_string(),
-            kind: kind,
-            hash: hash.to_string(),
-        }
     }
 }
