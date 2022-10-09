@@ -6,7 +6,6 @@ use rusqlite::Connection;
 
 use crate::models::commit::Commit;
 use crate::models::tree_file::TreeFile;
-use crate::tree::TreeDiff;
 
 /* A Tree represents a flattened file tree: A heirchal list of files, each with a hash, a size in
  * bytes, and a commit hash that connects them to the rest of the sssync world.
@@ -83,24 +82,6 @@ pub fn get(
         .into_iter()
         .flat_map(|e| e)
         .collect()
-}
-
-pub fn diff(
-    connection: &Connection,
-    older: &Commit,
-    newer: &Commit,
-) -> Result<TreeDiff, Box<dyn Error>> {
-    if older.hash == newer.hash {
-        return Ok(TreeDiff {
-            additions: HashSet::new(),
-            deletions: HashSet::new(),
-        });
-    }
-
-    let older_tree = get(connection, &older.hash)?;
-    let newer_tree = get(connection, &newer.hash)?;
-
-    Ok(TreeDiff::new(&older_tree, &newer_tree))
 }
 
 pub fn additions(

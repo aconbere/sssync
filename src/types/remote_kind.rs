@@ -1,11 +1,11 @@
 use std::fmt;
 
-use clap::ArgEnum;
+use clap::ValueEnum;
 use rusqlite::types::{
     FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef,
 };
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, ArgEnum)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, ValueEnum)]
 pub enum RemoteKind {
     S3,
     Local,

@@ -6,11 +6,23 @@ use rusqlite::Connection;
 use tokio;
 
 use crate::actions::{
-    add, branch, checkout, commit, init, log, remote, reset, status, tree,
+    add, branch, checkout, commit, init, log, migration, remote, reset, status,
+    tree,
 };
 use crate::db::repo_db_path;
 use crate::store::get_root_path;
 use crate::types::remote_kind::RemoteKind;
+
+#[derive(Parser, Debug)]
+#[command(name = "sssync")]
+#[command(author = "Anders Conbere<anders@conbere.org>")]
+#[command(version = "0.1")]
+#[command(about = "Keep big files in sync in S3", long_about = None)]
+#[clap(author, version, about, long_about = None)]
+pub struct Cli {
+    #[clap(subcommand)]
+    action: Action,
+}
 
 #[derive(Subcommand, Debug)]
 pub enum Branch {
@@ -20,11 +32,17 @@ pub enum Branch {
 }
 
 #[derive(Subcommand, Debug)]
+pub enum Migration {
+    List,
+    Show { id: String },
+}
+
+#[derive(Subcommand, Debug)]
 pub enum Remote {
     Add {
         name: String,
 
-        #[clap(long, arg_enum)]
+        #[arg(value_enum)]
         kind: RemoteKind,
 
         #[clap(long)]
@@ -33,6 +51,9 @@ pub enum Remote {
     List,
     Init {
         name: String,
+
+        #[arg(long)]
+        force: bool,
     },
     Push {
         name: String,
@@ -74,13 +95,10 @@ pub enum Action {
         #[clap(subcommand)]
         action: Branch,
     },
-}
-
-#[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None)]
-pub struct Cli {
-    #[clap(subcommand)]
-    action: Action,
+    Migration {
+        #[clap(subcommand)]
+        action: Migration,
+    },
 }
 
 pub fn run() -> Result<(), Box<dyn Error>> {
@@ -107,9 +125,14 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 location,
             } => remote::add(&connection, name, kind, location),
             Remote::List => remote::list(&connection),
-            Remote::Init { name } => {
+            Remote::Init { name, force } => {
                 let rt = tokio::runtime::Runtime::new().unwrap();
-                rt.block_on(remote::init(&connection, &root_path, name))?;
+                rt.block_on(remote::init(
+                    &connection,
+                    &root_path,
+                    name,
+                    *force,
+                ))?;
                 Ok(())
             }
             Remote::Push { name } => {
@@ -138,6 +161,13 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 branch::switch(&connection, &root_path, name)
             }
             Branch::List => branch::list(&connection),
+        },
+        Action::Migration { action } => match action {
+            Migration::List {} => {
+                migration::list(&connection)?;
+                Ok(())
+            }
+            Migration::Show { id } => migration::show(&connection, id),
         },
         Action::Commit => commit::commit(&connection, &root_path),
         Action::Status => {

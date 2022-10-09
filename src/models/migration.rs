@@ -1,12 +1,12 @@
+use rusqlite::types::{
+    FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef,
+};
 use uuid::Uuid;
 
 use crate::models::remote::Remote;
 use crate::types::remote_kind::RemoteKind;
 
-use rusqlite::types::{
-    FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef,
-};
-
+#[derive(Debug)]
 pub enum MigrationKind {
     Upload,
     Download,
@@ -44,6 +44,7 @@ impl ToSql for MigrationKind {
     }
 }
 
+#[derive(Debug)]
 pub enum MigrationState {
     Waiting,
     Running,
@@ -88,6 +89,19 @@ impl ToSql for MigrationState {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
         Ok(ToSqlOutput::from(self.to_str()))
     }
+}
+
+pub fn print_table(items: Vec<Migration>) {
+    for i in items {
+        print_migration_tabular(i)
+    }
+}
+
+fn print_migration_tabular(m: Migration) {
+    println!(
+        "|{}, {:?}, {}, {}, {}, {:?}|",
+        m.id, m.kind, m.remote_location, m.remote_kind, m.remote_name, m.state
+    )
 }
 
 pub struct Migration {

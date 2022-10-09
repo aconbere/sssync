@@ -46,6 +46,70 @@ pub fn insert(
     Ok(())
 }
 
+pub fn get_all(
+    connection: &Connection,
+) -> Result<Vec<Migration>, rusqlite::Error> {
+    let mut stmt = connection.prepare(
+        "
+        SELECT
+            id,
+            kind,
+            remote_name,
+            remote_kind,
+            remote_location,
+            state
+        FROM
+            migrations
+        ",
+    )?;
+
+    stmt.query_map(params![], |row| {
+        Ok(Migration {
+            id: row.get(0)?,
+            kind: row.get(1)?,
+            remote_name: row.get(2)?,
+            remote_kind: row.get(3)?,
+            remote_location: row.get(4)?,
+            state: row.get(5)?,
+        })
+    })
+    .into_iter()
+    .flat_map(|e| e)
+    .collect()
+}
+
+//pub fn get(
+//    connection: &Connection,
+//    id: &str,
+//) -> Result<Migration, rusqlite::Error> {
+//    connection.query_row(
+//        "
+//        SELECT
+//            id,
+//            kind,
+//            remote_name,
+//            remote_kind,
+//            remote_location,
+//            state
+//        FROM
+//            migrations
+//        WHERE
+//            id = ?1
+//        ",
+//        params![id],
+//        |row| {
+//            Ok(Migration {
+//                id: row.get(0)?,
+//                kind: row.get(1)?,
+//                remote_name: row.get(2)?,
+//                remote_kind: row.get(3)?,
+//                remote_location: row.get(4)?,
+//                state: row.get(5)?,
+//            })
+//        },
+//    )
+//}
+
 pub fn set_state(
     connection: &Connection,
     migration: &Migration,

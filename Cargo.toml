@@ -11,7 +11,8 @@ xxhash-rust = { version= "0.8.3", features = ["xxh3"]}
 aws-sdk-s3 = "0.12.0"
 aws-config = "0.12.0"
 rusqlite = { version = "0.28.0", features = ["bundled"] }
-clap = { version = "3.1.18", features = ["derive"] }
+# clap = { version = "3.1.18", features = ["derive"] }
+clap = { version = "4.0.11", features = ["derive"] }
 libc = "0.2"
 errno = "0.2"
 url = "2.2.2"

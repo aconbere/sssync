@@ -49,6 +49,7 @@ pub async fn init(
     connection: &Connection,
     root_path: &Path,
     remote_name: &str,
+    force: bool,
 ) -> Result<(), Box<dyn Error>> {
     let remote = db::remote::get(connection, remote_name)?;
     let meta = db::meta::get(connection)?;
@@ -64,6 +65,23 @@ pub async fn init(
             let remote_directory = Path::new(u.path());
 
             let remote_db_path = remote_directory.join(".sssync/sssync.db");
+
+            // check if the remote file exists before running init
+            let head_object_res = client
+                .head_object()
+                .bucket(bucket)
+                .key(remote_db_path.to_str().unwrap())
+                .send()
+                .await;
+
+            if head_object_res.is_ok() {
+                if !force {
+                    println!("WARNING: remote already exists.");
+                    println!("\trun with --force to init anyway.");
+                    return Ok(());
+                }
+            }
+
             let local_db_path = root_path.join(".sssync/sssync.db");
 
             let tree = db::tree::get(connection, &head.hash)?;

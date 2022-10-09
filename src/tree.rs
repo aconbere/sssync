@@ -44,49 +44,6 @@ impl TreeDiff {
         }
     }
 
-    pub fn add(&self, other: &Self) -> Self {
-        /* Ex:
-         *
-         * A: {
-         *    additions: (1,2,3,4),
-         *    deletions: (5,6,7),
-         * }
-         *
-         * B: {
-         *    additions: (1,5,8,9),
-         *    deletions: (2,3,10),
-         * }
-         *
-         * A.add(B) => {
-         *   additions: (1,4,5,8,9)
-         *   deletions: (6,7,2,3,10)
-         * }
-         *
-         * process:
-         *      additions = (A.additions - B.deletions) + B.additions
-         *      deletions = (A.deletions - B.additions) + B.deletions
-         */
-
-        let mut additions: HashSet<TreeFile> = self
-            .additions
-            .difference(&other.deletions)
-            .cloned()
-            .collect();
-        additions.extend(other.additions.clone());
-
-        let mut deletions: HashSet<TreeFile> = self
-            .deletions
-            .difference(&other.additions)
-            .cloned()
-            .collect();
-        deletions.extend(other.deletions.clone());
-
-        Self {
-            additions: additions,
-            deletions: deletions,
-        }
-    }
-
     pub fn apply(&self, root_path: &Path) -> Result<(), Box<dyn Error>> {
         for a in &self.additions {
             let destination = root_path.join(&a.path);

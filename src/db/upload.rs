@@ -3,7 +3,6 @@ use std::error::Error;
 use rusqlite::params;
 use rusqlite::Connection;
 
-use crate::models::migration::Migration;
 use crate::models::upload::{Upload, UploadState};
 
 pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
@@ -37,9 +36,36 @@ pub fn insert(
     Ok(())
 }
 
-pub fn get_all_for_migration(
+pub fn get_all(
     connection: &Connection,
-    migration: &Migration,
+    migration_id: &str,
+) -> Result<Vec<Upload>, rusqlite::Error> {
+    let mut statement = connection.prepare(
+        "
+        SELECT
+            migration_id, object_hash, state
+        FROM
+            uploads
+        WHERE
+            migration_id = ?1
+        ",
+    )?;
+    statement
+        .query_map(params![migration_id], |row| {
+            Ok(Upload {
+                migration_id: row.get(0)?,
+                object_hash: row.get(1)?,
+                state: row.get(2)?,
+            })
+        })
+        .into_iter()
+        .flat_map(|e| e)
+        .collect()
+}
+
+pub fn get_all_with_state(
+    connection: &Connection,
+    migration_id: &str,
     state: UploadState,
 ) -> Result<Vec<Upload>, rusqlite::Error> {
     let mut statement = connection.prepare(
@@ -54,7 +80,7 @@ pub fn get_all_for_migration(
         ",
     )?;
     statement
-        .query_map(params![migration.id, state], |row| {
+        .query_map(params![migration_id, state], |row| {
             Ok(Upload {
                 migration_id: row.get(0)?,
                 object_hash: row.get(1)?,
@@ -68,9 +94,9 @@ pub fn get_all_for_migration(
 
 pub fn get_waiting_for_migration(
     connection: &Connection,
-    migration: &Migration,
+    migration_id: &str,
 ) -> Result<Vec<Upload>, rusqlite::Error> {
-    get_all_for_migration(connection, migration, UploadState::Waiting)
+    get_all_with_state(connection, migration_id, UploadState::Waiting)
 }
 
 pub fn set_state(

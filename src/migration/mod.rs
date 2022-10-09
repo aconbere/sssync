@@ -38,7 +38,8 @@ pub async fn run(
     root_path: &Path,
     migration: &Migration,
 ) -> Result<(), Box<dyn Error>> {
-    let uploads = db::upload::get_waiting_for_migration(connection, migration)?;
+    let uploads =
+        db::upload::get_waiting_for_migration(connection, &migration.id)?;
 
     println!("uploading {} files", uploads.len());
     let client = make_client().await;

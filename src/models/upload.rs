@@ -2,6 +2,7 @@ use rusqlite::types::{
     FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef,
 };
 
+#[derive(Debug)]
 pub enum UploadState {
     Waiting,
     Running,
@@ -42,6 +43,12 @@ impl FromSql for UploadState {
 impl ToSql for UploadState {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
         Ok(ToSqlOutput::from(self.to_str()))
+    }
+}
+
+pub fn print_table(uploads: Vec<Upload>) {
+    for u in uploads {
+        println!("{}, {:?}", u.object_hash, u.state)
     }
 }
 
