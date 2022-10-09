@@ -82,21 +82,24 @@ pub fn get_shared_parent(
     return shared_parent.clone();
 }
 
+/* Takes a list of ordered commits and returns the tail of that list following a commit who's hash
+ * matches "needle".
+ */
 pub fn commits_since(
-    list: &Vec<Commit>,
-    parent: &Commit,
+    haystack: &Vec<Commit>,
+    needle: &Commit,
 ) -> Option<Vec<Commit>> {
     let mut diff: Vec<Commit> = vec![];
     let mut found = false;
 
-    for i in 0..list.len() {
-        let l = &list[i];
+    for i in 0..haystack.len() {
+        let l = &haystack[i];
 
-        if l.hash == parent.hash {
+        if l.hash == needle.hash {
             found = true;
             break;
         }
-        diff.push(list[i].clone());
+        diff.push(haystack[i].clone());
     }
 
     if !found {
@@ -114,6 +117,9 @@ pub enum CompareResult {
     NoSharedParent,
 }
 
+/* Takes two ordered set of commits, finds their shared parent commit,
+ * and returns each of their remainders since that parent commit
+ */
 pub fn diff_commit_list(
     left: &Vec<Commit>,
     right: &Vec<Commit>,
@@ -125,6 +131,31 @@ pub fn diff_commit_list(
         }
     } else {
         return CompareResult::NoSharedParent;
+    }
+}
+
+pub fn diff_commit_list_left(
+    left: &Vec<Commit>,
+    right: &Vec<Commit>,
+) -> Result<Vec<Commit>, Box<dyn Error>> {
+    match diff_commit_list(&left, &right) {
+        CompareResult::NoSharedParent => {
+            return Err("Remote has no shared parent".into())
+        }
+        CompareResult::Diff { left, right } => {
+            if right.len() > 0 {
+                return Err(
+                    "no fast forward, remote has commits not in the current db"
+                        .into(),
+                );
+            }
+
+            if left.len() == 0 {
+                return Err("no differences between remote and local".into());
+            }
+
+            Ok(left)
+        }
     }
 }
 

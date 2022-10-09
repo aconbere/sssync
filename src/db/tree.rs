@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::error::Error;
 
 use rusqlite::params;
@@ -5,7 +6,7 @@ use rusqlite::Connection;
 
 use crate::models::commit::Commit;
 use crate::models::tree_file::TreeFile;
-use crate::tree;
+use crate::tree::TreeDiff;
 
 /* A Tree represents a flattened file tree: A heirchal list of files, each with a hash, a size in
  * bytes, and a commit hash that connects them to the rest of the sssync world.
@@ -58,7 +59,7 @@ pub fn insert_batch(
 pub fn get(
     connection: &Connection,
     hash: &str,
-) -> Result<Vec<TreeFile>, rusqlite::Error> {
+) -> Result<HashSet<TreeFile>, rusqlite::Error> {
     let mut statement = connection.prepare(
         "
         SELECT
@@ -88,17 +89,31 @@ pub fn diff(
     connection: &Connection,
     older: &Commit,
     newer: &Commit,
-) -> Result<tree::TreeDiff, Box<dyn Error>> {
+) -> Result<TreeDiff, Box<dyn Error>> {
     if older.hash == newer.hash {
-        println!("db::tree::diff no diff");
-        return Ok(tree::TreeDiff {
-            additions: vec![],
-            deletions: vec![],
-            changes: vec![],
+        return Ok(TreeDiff {
+            additions: HashSet::new(),
+            deletions: HashSet::new(),
         });
     }
 
     let older_tree = get(connection, &older.hash)?;
     let newer_tree = get(connection, &newer.hash)?;
-    Ok(tree::diff(&older_tree, &newer_tree))
+
+    Ok(TreeDiff::new(&older_tree, &newer_tree))
+}
+
+pub fn additions(
+    connection: &Connection,
+    commits: &Vec<Commit>,
+) -> Result<HashSet<TreeFile>, Box<dyn Error>> {
+    // Fast forward commits
+    let mut init: HashSet<TreeFile> = HashSet::new();
+
+    for commit in commits {
+        let t = get(connection, &commit.hash)?;
+        init.extend(t);
+    }
+
+    Ok(init)
 }

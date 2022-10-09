@@ -17,6 +17,7 @@ pub fn create(
     object_hashes: &Vec<String>,
 ) -> Result<Migration, Box<dyn Error>> {
     let remote = db::remote::get(connection, remote_name)?;
+
     let migration = Migration::new(kind, &remote);
     db::migration::insert(connection, &migration)?;
 
@@ -42,11 +43,17 @@ pub async fn run(
     println!("uploading {} files", uploads.len());
     let client = make_client().await;
     let u = Url::parse(&migration.remote_location)?;
+
+    // for a url like `s3://anders.conbere.org/games` the url decomposes to
+    // bucket: anders.conbere.org
+    // key: /games
     let bucket = u.host_str().unwrap();
-    let remote_directory = Path::new(u.path()).join(&migration.remote_name);
+    let remote_directory = Path::new(u.path());
+
+    let upload_count = uploads.len();
 
     db::migration::set_state(connection, &migration, MigrationState::Running)?;
-    for upload in uploads {
+    for (i, upload) in uploads.iter().enumerate() {
         let remote_object_path = remote_directory
             .join(".sssync/objects")
             .join(&upload.object_hash);
@@ -55,19 +62,23 @@ pub async fn run(
             root_path.join(".sssync/objects").join(&upload.object_hash);
 
         db::upload::set_state(connection, &upload, UploadState::Running)?;
+        println!("Upload {}/{}", i, upload_count);
         println!(
             "Uploading {} to {}",
             local_object_path.display(),
             remote_object_path.display()
         );
-        match upload_multipart(
+
+        let result = upload_multipart(
             &client,
             bucket,
             &remote_object_path,
             &local_object_path,
+            true,
         )
-        .await
-        {
+        .await;
+
+        match result {
             Ok(_) => {
                 db::upload::set_state(
                     connection,

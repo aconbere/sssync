@@ -6,7 +6,7 @@ use rusqlite::Connection;
 use crate::db;
 use crate::models;
 use crate::models::meta::Meta;
-use crate::tree;
+use crate::tree::TreeDiff;
 
 pub fn add(
     connection: &Connection,
@@ -52,8 +52,8 @@ pub fn switch(
         .ok_or("Head is bad - no matching ref name")?;
     let current_tree = db::tree::get(connection, &head.hash)?;
 
-    let diff = tree::diff(&current_tree, &future_tree);
-    tree::apply_diff(root_path, &diff)?;
+    let diff = TreeDiff::new(&current_tree, &future_tree);
+    diff.apply(root_path)?;
     db::meta::update(connection, &Meta::new(&reference.name))
 }
 

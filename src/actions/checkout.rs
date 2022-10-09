@@ -3,7 +3,7 @@ use std::error::Error;
 use rusqlite::Connection;
 
 use crate::db;
-use crate::tree;
+use crate::tree::TreeDiff;
 
 pub fn checkout(
     connection: &Connection,
@@ -21,7 +21,7 @@ pub fn checkout(
 
     let current_tree = db::tree::get(connection, &head.hash)?;
     let new_tree = db::tree::get(connection, hash)?;
-    let diff = tree::diff(&current_tree, &new_tree);
+    let diff = TreeDiff::new(&current_tree, &new_tree);
 
     for f in diff.additions {
         println!("Diff: {}", f.path)
