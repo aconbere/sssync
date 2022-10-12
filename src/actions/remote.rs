@@ -8,6 +8,7 @@ use crate::db;
 use crate::models::commit;
 use crate::models::migration::MigrationKind;
 use crate::models::reference;
+use crate::models::remote;
 use crate::models::remote::Remote;
 use crate::s3::make_client;
 use crate::s3::upload_multipart::upload_multipart;
@@ -28,6 +29,19 @@ pub fn remove(
     name: &str,
 ) -> Result<(), Box<dyn Error>> {
     db::remote::delete(connection, name).map_err(|e| e.into())
+}
+
+pub fn locate(
+    connection: &Connection,
+    remote_name: &str,
+    path: &Path,
+) -> Result<Url, Box<dyn Error>> {
+    let remote = db::remote::get(connection, remote_name)?;
+    let tree_file = db::tree::get_by_path(connection, path)?;
+    let url =
+        remote::remote_object_path(&remote.location, &tree_file.file_hash)?;
+    println!("Url: {}", url);
+    Ok(url)
 }
 
 pub fn list(connection: &Connection) -> Result<(), Box<dyn Error>> {

@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::error::Error;
+use std::path::Path;
 
 use rusqlite::params;
 use rusqlite::Connection;
@@ -82,6 +83,31 @@ pub fn get(
         .into_iter()
         .flat_map(|e| e)
         .collect()
+}
+
+pub fn get_by_path(
+    connection: &Connection,
+    path: &Path,
+) -> Result<TreeFile, rusqlite::Error> {
+    let mut statement = connection.prepare(
+        "
+        SELECT
+            path, file_hash, size_bytes, commit_hash
+        FROM
+            trees
+        WHERE
+            path = ?1
+        ",
+    )?;
+
+    statement.query_row(params![path.to_str().unwrap()], |row| {
+        Ok(TreeFile {
+            path: row.get(0)?,
+            file_hash: row.get(1)?,
+            size_bytes: row.get(2)?,
+            commit_hash: row.get(3)?,
+        })
+    })
 }
 
 pub fn additions(

@@ -65,6 +65,12 @@ pub enum Remote {
     Remove {
         name: String,
     },
+    Locate {
+        name: String,
+
+        #[arg(long)]
+        path: PathBuf,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -155,6 +161,10 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             }
             Remote::Remove { name } => {
                 remote::remove(&connection, name)?;
+                Ok(())
+            }
+            Remote::Locate { name, path } => {
+                remote::locate(&connection, name, path)?;
                 Ok(())
             }
         },
