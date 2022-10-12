@@ -72,6 +72,7 @@ pub fn commit(
         &status.ref_name,
         Kind::Branch,
         &commit.hash,
+        None,
     )?;
     db::staging::delete(connection)?;
 

@@ -19,11 +19,11 @@ pub async fn upload_multipart(
     bucket: &str,
     key_path: &Path,
     file_path: &Path,
-    check_first: bool,
+    force: bool,
 ) -> Result<(), Box<dyn Error>> {
     let key = key_path.to_str().unwrap();
 
-    if check_first {
+    if !force {
         let head_object_res =
             client.head_object().bucket(bucket).key(key).send().await;
         if head_object_res.is_ok() {

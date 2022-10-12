@@ -7,7 +7,7 @@ use tokio;
 
 use crate::actions::{
     add, branch, checkout, commit, init, log, migration, remote, reset, status,
-    tree,
+    tree, update,
 };
 use crate::db::repo_db_path;
 use crate::store::get_root_path;
@@ -42,6 +42,7 @@ pub enum Remote {
     Add {
         name: String,
 
+        #[arg(long)]
         #[arg(value_enum)]
         kind: RemoteKind,
 
@@ -58,10 +59,7 @@ pub enum Remote {
     Push {
         name: String,
     },
-    Fetch {
-        name: String,
-    },
-    Sync {
+    FetchRemoteDB {
         name: String,
     },
     Remove {
@@ -78,6 +76,9 @@ pub enum Action {
     Log,
     Commit,
     Status,
+    Update {
+        remote: String,
+    },
     Init {
         path: PathBuf,
     },
@@ -123,7 +124,10 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 name,
                 kind,
                 location,
-            } => remote::add(&connection, name, kind, location),
+            } => {
+                println!("Adding remote: {}", name);
+                remote::add(&connection, name, kind, location)
+            }
             Remote::List => remote::list(&connection),
             Remote::Init { name, force } => {
                 let rt = tokio::runtime::Runtime::new().unwrap();
@@ -140,14 +144,13 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 rt.block_on(remote::push(&connection, &root_path, name))?;
                 Ok(())
             }
-            Remote::Sync { name } => {
+            Remote::FetchRemoteDB { name } => {
                 let rt = tokio::runtime::Runtime::new().unwrap();
-                rt.block_on(remote::sync(&connection, &root_path, name))?;
-                Ok(())
-            }
-            Remote::Fetch { name } => {
-                let rt = tokio::runtime::Runtime::new().unwrap();
-                rt.block_on(remote::fetch(&connection, &root_path, name))?;
+                rt.block_on(remote::fetch_remote_database(
+                    &connection,
+                    &root_path,
+                    name,
+                ))?;
                 Ok(())
             }
             Remote::Remove { name } => {
@@ -189,5 +192,10 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         Action::Checkout { hash } => checkout::checkout(&connection, hash),
         Action::Reset => reset::reset(&connection, &root_path),
         Action::Tree { hash } => tree::tree(&connection, hash),
+        Action::Update { remote } => {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(update::update(&connection, &root_path, remote))?;
+            Ok(())
+        }
     }
 }

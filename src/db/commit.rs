@@ -8,7 +8,6 @@ use rusqlite::OptionalExtension;
 use crate::models::commit::Commit;
 
 pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
-    println!("commit::create_table");
     connection.execute(
         "
         CREATE TABLE
@@ -29,11 +28,16 @@ pub fn insert(
     connection: &Connection,
     commit: &Commit,
 ) -> Result<(), Box<dyn Error>> {
-    println!("commit::insert: {}", commit.hash);
     connection.execute(
         "
-        INSERT INTO
-            commits (hash, comment, author, created_unix_timestamp, parent_hash)
+        INSERT OR IGNORE INTO
+            commits (
+                hash,
+                comment,
+                author,
+                created_unix_timestamp,
+                parent_hash
+            )
         VALUES
             (?1, ?2, ?3, ?4, ?5)
         ",
@@ -52,7 +56,6 @@ pub fn get(
     connection: &Connection,
     hash: &str,
 ) -> Result<Commit, rusqlite::Error> {
-    println!("commit::get: {}", hash);
     connection.query_row(
         "
         SELECT
@@ -77,9 +80,35 @@ pub fn get(
 
 pub fn get_all(
     connection: &Connection,
-    hash: &str,
 ) -> Result<Vec<Commit>, rusqlite::Error> {
-    println!("commit::get_all: {}", hash);
+    let mut statement = connection.prepare(
+        "
+        SELECT
+            hash, comment, author, created_unix_timestamp, parent_hash
+        FROM
+            commits
+        ",
+    )?;
+
+    statement
+        .query_map(params![], |row| {
+            Ok(Commit {
+                hash: row.get(0)?,
+                comment: row.get(1)?,
+                author: row.get(2)?,
+                created_unix_timestamp: row.get(3)?,
+                parent_hash: row.get(4)?,
+            })
+        })
+        .into_iter()
+        .flat_map(|e| e)
+        .collect()
+}
+
+pub fn get_children(
+    connection: &Connection,
+    head_hash: &str,
+) -> Result<Vec<Commit>, rusqlite::Error> {
     let mut statement = connection.prepare(
         "
         WITH RECURSIVE
@@ -109,7 +138,7 @@ pub fn get_all(
     )?;
 
     statement
-        .query_map(params![hash], |row| {
+        .query_map(params![head_hash], |row| {
             Ok(Commit {
                 hash: row.get(0)?,
                 comment: row.get(1)?,

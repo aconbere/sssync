@@ -17,25 +17,24 @@ pub async fn fetch_remote_database(
 ) -> Result<PathBuf, Box<dyn Error>> {
     match remote.kind {
         RemoteKind::S3 => {
-            let remote_db_copy_path = store::store_path(&root_path)
-                .join(store::REMOTES_DIR)
-                .join(format!("{}.db", &remote.name));
+            let copy_path = store::remote_db_path(root_path, &remote.name);
 
-            println!("fetching db into: {}", &remote_db_copy_path.display());
-            let mut remote_db_copy_file = File::create(&remote_db_copy_path)?;
+            let mut copy_file = File::create(&copy_path)?;
+
             let url = Url::parse(&remote.location)?;
             let bucket = url.host_str().unwrap();
-            let directory = Path::new(url.path()).join(&remote.name);
+            let directory = Path::new(url.path());
             let db_path = directory.join(".sssync/sssync.db");
+
             download_object(
                 &client,
                 bucket,
                 db_path.to_str().unwrap(),
-                &mut remote_db_copy_file,
+                &mut copy_file,
             )
             .await?;
 
-            Ok(remote_db_copy_path)
+            Ok(copy_path)
         }
         RemoteKind::Local => Ok(root_path.to_path_buf()),
     }

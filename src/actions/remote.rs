@@ -7,6 +7,7 @@ use url::Url;
 use crate::db;
 use crate::models::commit;
 use crate::models::migration::MigrationKind;
+use crate::models::reference;
 use crate::models::remote::Remote;
 use crate::s3::make_client;
 use crate::s3::upload_multipart::upload_multipart;
@@ -97,13 +98,12 @@ pub async fn init(
             println!("Running Migration");
             crate::migration::run(connection, root_path, &migration).await?;
 
-            println!("Uploading database");
             upload_multipart(
                 &client,
                 bucket,
                 &remote_db_path,
                 &local_db_path,
-                true,
+                force,
             )
             .await?;
 
@@ -145,9 +145,11 @@ pub async fn push(
                 return Err("no differences between remote and local".into());
             }
 
-            let commits = db::commit::get_all(connection, &head.hash)?;
-            let remote_commits =
-                db::commit::get_all(&remote_db_connection, &remote_head.hash)?;
+            let commits = db::commit::get_children(connection, &head.hash)?;
+            let remote_commits = db::commit::get_children(
+                &remote_db_connection,
+                &remote_head.hash,
+            )?;
 
             let ff_commits =
                 commit::diff_commit_list_left(&commits, &remote_commits)?;
@@ -186,39 +188,13 @@ pub async fn push(
     }
 }
 
-pub async fn fetch(
-    connection: &Connection,
-    root_path: &Path,
-    remote_name: &str,
-) -> Result<(), Box<dyn Error>> {
-    let remote = db::remote::get(connection, remote_name)?;
-    //let meta = db::meta::get(connection)?;
-
-    //let head = db::commit::get_by_ref_name(connection, &meta.head)?.ok_or("No commit")?;
-
-    match remote.kind {
-        RemoteKind::S3 => {
-            let client = make_client().await;
-            // let u = Url::parse(&remote.location)?;
-            //let bucket = u.host_str().unwrap();
-            //let remote_directory = Path::new(u.path()).join(&remote.name);
-
-            crate::remote::fetch_remote_database(&client, &remote, &root_path)
-                .await?;
-            Ok(())
-        }
-        RemoteKind::Local => Ok(()),
-    }
-}
-
 /* Pull down the remote database
  *
  * This will not fetch down remote objects. Bceause a goal of sssync is to minimize transfer costs
  * its useful to have a distinction between getting the latest remote state (fetch) and getting the
  * relevant remote objects (undefined as of yet).
  */
-#[allow(dead_code)]
-pub async fn sync(
+pub async fn fetch_remote_database(
     connection: &Connection,
     root_path: &Path,
     remote_name: &str,
@@ -228,8 +204,36 @@ pub async fn sync(
     match remote.kind {
         RemoteKind::S3 => {
             let client = make_client().await;
-            crate::remote::fetch_remote_database(&client, &remote, &root_path)
-                .await?;
+
+            let remote_path = crate::remote::fetch_remote_database(
+                &client, &remote, &root_path,
+            )
+            .await?;
+
+            let remote_connection = Connection::open(remote_path)?;
+
+            println!("Adding commits");
+            let remote_commits = db::commit::get_all(&remote_connection)?;
+            for commit in remote_commits {
+                db::commit::insert(connection, &commit)?;
+            }
+
+            println!("Adding refs");
+            let remote_refs = db::reference::get_all_by_kind(
+                &remote_connection,
+                None,
+                reference::Kind::Branch,
+            )?;
+            for _ref in remote_refs {
+                db::reference::insert(
+                    connection,
+                    &_ref.name,
+                    _ref.kind,
+                    &_ref.hash,
+                    Some(remote_name),
+                )?;
+            }
+
             Ok(())
         }
         RemoteKind::Local => Ok(()),

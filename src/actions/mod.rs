@@ -9,3 +9,4 @@ pub mod remote;
 pub mod reset;
 pub mod status;
 pub mod tree;
+pub mod update;

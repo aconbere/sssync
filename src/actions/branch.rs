@@ -29,6 +29,7 @@ pub fn add(
         name,
         models::reference::Kind::Branch,
         &commit_hash,
+        None,
     )?;
     Ok(())
 }
@@ -44,7 +45,7 @@ pub fn switch(
         return Err("There are currently staged files: Commit your current work or reset your state to continue".into());
     }
 
-    let reference = db::reference::get(connection, name)?;
+    let reference = db::reference::get(connection, None, name)?;
     let commit = db::commit::get(connection, &reference.hash)?;
     let future_tree = db::tree::get(connection, &commit.hash)?;
     let meta = db::meta::get(connection)?;
@@ -60,6 +61,7 @@ pub fn switch(
 pub fn list(connection: &Connection) -> Result<(), Box<dyn Error>> {
     let branches = db::reference::get_all_by_kind(
         connection,
+        None,
         models::reference::Kind::Branch,
     )?;
 

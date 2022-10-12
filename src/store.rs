@@ -14,6 +14,12 @@ pub fn store_path(root_path: &Path) -> PathBuf {
     root_path.join(STORE_DIR)
 }
 
+pub fn remote_db_path(root_path: &Path, name: &str) -> PathBuf {
+    store_path(&root_path)
+        .join(REMOTES_DIR)
+        .join(format!("{}.db", name))
+}
+
 pub fn object_path(root_path: &Path, hash: &str) -> PathBuf {
     let mut p = PathBuf::new();
     p.push(STORE_DIR);
