@@ -18,9 +18,14 @@ pub async fn update(
         RemoteKind::S3 => {
             let client = make_client().await;
 
-            crate::remote::fetch_remote_database(&client, &remote, &root_path)
-                .await?;
-            // At this point we should probably merge in the commits
+            crate::remote::fetch_remote_database(
+                &client,
+                &root_path,
+                remote.kind,
+                &remote.name,
+                &remote.location,
+            )
+            .await?;
 
             Ok(())
         }

@@ -4,7 +4,7 @@ use rusqlite::Connection;
 
 use crate::db;
 use crate::models::migration;
-use crate::models::upload;
+use crate::models::transfer;
 
 pub fn list(connection: &Connection) -> Result<(), Box<dyn Error>> {
     let migrations = db::migration::get_all(connection)?;
@@ -16,7 +16,7 @@ pub fn show(
     connection: &Connection,
     migration_id: &str,
 ) -> Result<(), Box<dyn Error>> {
-    let uploads = db::upload::get_all(connection, migration_id)?;
-    upload::print_table(uploads);
+    let uploads = db::transfer::get_all(connection, migration_id)?;
+    transfer::print_table(uploads);
     Ok(())
 }

@@ -4,45 +4,8 @@ use rusqlite::types::{
 use uuid::Uuid;
 
 use crate::models::remote::Remote;
+use crate::models::transfer::TransferKind;
 use crate::types::remote_kind::RemoteKind;
-
-#[derive(Debug)]
-pub enum MigrationKind {
-    Upload,
-    Download,
-}
-
-impl MigrationKind {
-    pub fn parse(s: &str) -> Result<MigrationKind, String> {
-        match s {
-            "Upload" => Ok(MigrationKind::Upload),
-            "Download" => Ok(MigrationKind::Download),
-            _ => Err(format!("invalid kind: {}", s)),
-        }
-    }
-
-    pub fn to_str(&self) -> &str {
-        match self {
-            MigrationKind::Upload => "Upload",
-            MigrationKind::Download => "Download",
-        }
-    }
-}
-
-impl FromSql for MigrationKind {
-    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
-        value.as_str().and_then(|s| match MigrationKind::parse(s) {
-            Ok(rk) => Ok(rk),
-            Err(_) => Err(FromSqlError::InvalidType),
-        })
-    }
-}
-
-impl ToSql for MigrationKind {
-    fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
-        Ok(ToSqlOutput::from(self.to_str()))
-    }
-}
 
 #[derive(Debug)]
 pub enum MigrationState {
@@ -106,7 +69,7 @@ fn print_migration_tabular(m: Migration) {
 
 pub struct Migration {
     pub id: String,
-    pub kind: MigrationKind,
+    pub kind: TransferKind,
     pub remote_location: String,
     pub remote_kind: RemoteKind,
     pub remote_name: String,
@@ -114,7 +77,7 @@ pub struct Migration {
 }
 
 impl Migration {
-    pub fn new(kind: MigrationKind, remote: &Remote) -> Self {
+    pub fn new(kind: TransferKind, remote: &Remote) -> Self {
         Self {
             id: Uuid::new_v4().hyphenated().to_string(),
             state: MigrationState::Waiting,

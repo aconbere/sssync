@@ -6,5 +6,5 @@ pub mod reference;
 pub mod remote;
 pub mod staged_file;
 pub mod status;
+pub mod transfer;
 pub mod tree_file;
-pub mod upload;

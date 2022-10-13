@@ -20,6 +20,10 @@ pub fn remote_db_path(root_path: &Path, name: &str) -> PathBuf {
         .join(format!("{}.db", name))
 }
 
+pub fn db_path(root_path: &Path) -> PathBuf {
+    root_path.join(".sssync/sssync.db")
+}
+
 pub fn object_path(root_path: &Path, hash: &str) -> PathBuf {
     let mut p = PathBuf::new();
     p.push(STORE_DIR);
@@ -49,6 +53,11 @@ pub fn export_to(
     let p = object_path(root_path, hash);
     fs::copy(p, destination)?;
     Ok(())
+}
+
+pub fn exists(root_path: &Path, hash: &str) -> bool {
+    let p = object_path(root_path, hash);
+    p.exists()
 }
 
 // Writes the contents of the file found at source into the store

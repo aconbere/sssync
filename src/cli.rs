@@ -6,8 +6,8 @@ use rusqlite::Connection;
 use tokio;
 
 use crate::actions::{
-    add, branch, checkout, commit, init, log, migration, remote, reset, status,
-    tree, update,
+    add, branch, checkout, clone, commit, init, log, migration, remote, reset,
+    status, tree, update,
 };
 use crate::db::repo_db_path;
 use crate::store::get_root_path;
@@ -62,6 +62,12 @@ pub enum Remote {
     FetchRemoteDB {
         name: String,
     },
+    PushRemoteDB {
+        name: String,
+
+        #[arg(long)]
+        force: bool,
+    },
     Remove {
         name: String,
     },
@@ -94,6 +100,10 @@ pub enum Action {
     Tree {
         hash: String,
     },
+    Clone {
+        url: String,
+        path: PathBuf,
+    },
     Remote {
         #[clap(subcommand)]
         action: Remote,
@@ -117,6 +127,14 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     // can provide convenient access to root_path for all the other commands.
     if let Action::Init { path } = &cli.action {
         init::init(path)?;
+        return Ok(());
+    }
+
+    // Clone isn't expected to be run with a valid root_path. We're special casing init so that we
+    // can provide convenient access to root_path for all the other commands.
+    if let Action::Clone { url, path } = &cli.action {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(clone::clone(url, path))?;
         return Ok(());
     }
 
@@ -159,6 +177,16 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 ))?;
                 Ok(())
             }
+            Remote::PushRemoteDB { name, force } => {
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(remote::push_remote_database(
+                    &connection,
+                    &root_path,
+                    name,
+                    *force,
+                ))?;
+                Ok(())
+            }
             Remote::Remove { name } => {
                 remote::remove(&connection, name)?;
                 Ok(())
@@ -183,6 +211,10 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             Migration::Show { id } => migration::show(&connection, id),
         },
         Action::Commit => commit::commit(&connection, &root_path),
+        Action::Clone { url, path } => {
+            println!("Action::Clone {} {}", url, path.display());
+            Ok(())
+        }
         Action::Status => {
             status::status(&connection, &root_path)?;
             Ok(())

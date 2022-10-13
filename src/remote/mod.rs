@@ -5,23 +5,24 @@ use std::path::{Path, PathBuf};
 use aws_sdk_s3::Client;
 use url::Url;
 
-use crate::models::remote::Remote;
 use crate::s3::download_object;
 use crate::store;
 use crate::types::remote_kind::RemoteKind;
 
 pub async fn fetch_remote_database(
     client: &Client,
-    remote: &Remote,
     root_path: &Path,
+    remote_kind: RemoteKind,
+    remote_name: &str,
+    remote_location: &str,
 ) -> Result<PathBuf, Box<dyn Error>> {
-    match remote.kind {
+    match remote_kind {
         RemoteKind::S3 => {
-            let copy_path = store::remote_db_path(root_path, &remote.name);
+            let copy_path = store::remote_db_path(root_path, remote_name);
 
             let mut copy_file = File::create(&copy_path)?;
 
-            let url = Url::parse(&remote.location)?;
+            let url = Url::parse(remote_location)?;
             let bucket = url.host_str().unwrap();
             let directory = Path::new(url.path());
             let db_path = directory.join(".sssync/sssync.db");

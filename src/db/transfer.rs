@@ -3,16 +3,17 @@ use std::error::Error;
 use rusqlite::params;
 use rusqlite::Connection;
 
-use crate::models::upload::{Upload, UploadState};
+use crate::models::transfer::{Transfer, TransferState};
 
 pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
         CREATE TABLE
-            uploads (
+            transfers (
                 migration_id TEXT NOT NULL,
                 object_hash TEXT NOT NULL,
-                state TEXT NOT NULL
+                state TEXT NOT NULL,
+                kind TEXT NOT NULL
             )
         ",
         params![],
@@ -22,16 +23,21 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
 
 pub fn insert(
     connection: &Connection,
-    upload: &Upload,
+    transfer: &Transfer,
 ) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
         INSERT INTO
-            uploads (migration_id, object_hash, state)
+            transfers (migration_id, object_hash, state)
         VALUES
-            (?1, ?2, ?3)
+            (?1, ?2, ?3, ?4)
         ",
-        params![upload.migration_id, upload.object_hash, upload.state],
+        params![
+            transfer.migration_id,
+            transfer.object_hash,
+            transfer.state,
+            transfer.kind
+        ],
     )?;
     Ok(())
 }
@@ -39,23 +45,24 @@ pub fn insert(
 pub fn get_all(
     connection: &Connection,
     migration_id: &str,
-) -> Result<Vec<Upload>, rusqlite::Error> {
+) -> Result<Vec<Transfer>, rusqlite::Error> {
     let mut statement = connection.prepare(
         "
         SELECT
-            migration_id, object_hash, state
+            migration_id, object_hash, state, kind
         FROM
-            uploads
+            transfers
         WHERE
             migration_id = ?1
         ",
     )?;
     statement
         .query_map(params![migration_id], |row| {
-            Ok(Upload {
+            Ok(Transfer {
                 migration_id: row.get(0)?,
                 object_hash: row.get(1)?,
                 state: row.get(2)?,
+                kind: row.get(3)?,
             })
         })
         .into_iter()
@@ -66,14 +73,14 @@ pub fn get_all(
 pub fn get_all_with_state(
     connection: &Connection,
     migration_id: &str,
-    state: UploadState,
-) -> Result<Vec<Upload>, rusqlite::Error> {
+    state: TransferState,
+) -> Result<Vec<Transfer>, rusqlite::Error> {
     let mut statement = connection.prepare(
         "
         SELECT
-            migration_id, object_hash, state
+            migration_id, object_hash, state, kind
         FROM
-            uploads
+            transfers
         WHERE
             migration_id = ?1 AND
             state = ?2
@@ -81,10 +88,11 @@ pub fn get_all_with_state(
     )?;
     statement
         .query_map(params![migration_id, state], |row| {
-            Ok(Upload {
+            Ok(Transfer {
                 migration_id: row.get(0)?,
                 object_hash: row.get(1)?,
                 state: row.get(2)?,
+                kind: row.get(3)?,
             })
         })
         .into_iter()
@@ -95,26 +103,26 @@ pub fn get_all_with_state(
 pub fn get_waiting_for_migration(
     connection: &Connection,
     migration_id: &str,
-) -> Result<Vec<Upload>, rusqlite::Error> {
-    get_all_with_state(connection, migration_id, UploadState::Waiting)
+) -> Result<Vec<Transfer>, rusqlite::Error> {
+    get_all_with_state(connection, migration_id, TransferState::Waiting)
 }
 
 pub fn set_state(
     connection: &Connection,
-    upload: &Upload,
-    state: UploadState,
+    transfer: &Transfer,
+    state: TransferState,
 ) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
         UPDATE
-            uploads
+            transfers
         SET
             state = ?3
         WHERE
             migration_id = ?1 AND
             object_hash = ?2
         ",
-        params![upload.migration_id, upload.object_hash, state],
+        params![transfer.migration_id, transfer.object_hash, state],
     )?;
     Ok(())
 }

@@ -8,6 +8,7 @@ pub static LOCAL: &str = "local";
  *
  * Right now the only supported kind of reference is a branch.
  */
+#[derive(Debug)]
 pub struct Reference {
     pub name: String,
     pub kind: Kind,
@@ -32,6 +33,7 @@ impl Reference {
     }
 }
 
+#[derive(Debug)]
 pub enum Kind {
     Branch,
 }

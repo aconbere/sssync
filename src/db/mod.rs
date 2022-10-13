@@ -11,8 +11,8 @@ pub mod migration;
 pub mod reference;
 pub mod remote;
 pub mod staging;
+pub mod transfer;
 pub mod tree;
-pub mod upload;
 
 pub const DB_FILE_NAME: &str = "sssync.db";
 
@@ -33,7 +33,7 @@ pub fn init(connection: &Connection) -> Result<(), Box<dyn Error>> {
     remote::create_table(connection)?;
     staging::create_table(connection)?;
     tree::create_table(connection)?;
-    upload::create_table(connection)?;
+    transfer::create_table(connection)?;
 
     meta::update(connection, &Meta::new("main"))?;
     Ok(())

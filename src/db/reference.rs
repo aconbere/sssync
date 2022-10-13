@@ -10,7 +10,7 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
         CREATE TABLE
-            refs (
+            refs2 (
                 name TEXT NOT NULL,
                 kind TEXT NOT NULL,
                 hash TEXT NOT NULL,
@@ -32,10 +32,10 @@ pub fn insert(
 ) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
-        INSERT OR IGNORE INTO
+        INSERT INTO
             refs (name, kind, hash, remote)
         VALUES
-            (?1, ?2, ?3)
+            (?1, ?2, ?3, ?4)
         ",
         params![name, kind, hash, remote.unwrap_or(LOCAL)],
     )?;
@@ -82,7 +82,7 @@ pub fn get_all_by_kind(
         ",
     )?;
     statement
-        .query_map(params![kind, remote], |row| {
+        .query_map(params![kind, remote.unwrap_or("local")], |row| {
             Ok(Reference {
                 name: row.get(0)?,
                 kind: row.get(1)?,
