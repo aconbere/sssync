@@ -70,7 +70,7 @@ fn get_all_intermediate(
             })
         })
         .into_iter()
-        .flat_map(|e| e)
+        .flatten()
         .collect()
 }
 
@@ -79,7 +79,7 @@ pub fn get(
     name: &str,
 ) -> Result<Remote, Box<dyn Error>> {
     let inter = get_intermediate(connection, name)?;
-    Ok(Remote::new(&inter.name, inter.kind, &inter.location)?)
+    Remote::new(&inter.name, inter.kind, &inter.location)
 }
 
 fn get_intermediate(

@@ -15,7 +15,7 @@ pub fn store_path(root_path: &Path) -> PathBuf {
 }
 
 pub fn remote_db_path(root_path: &Path, name: &str) -> PathBuf {
-    store_path(&root_path)
+    store_path(root_path)
         .join(REMOTES_DIR)
         .join(format!("{}.db", name))
 }

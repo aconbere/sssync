@@ -51,7 +51,9 @@ pub async fn upload_multipart(
         .send()
         .await?;
 
-    let upload_id = multipart.upload_id.unwrap_or(String::from("no upload id"));
+    let upload_id = multipart
+        .upload_id
+        .unwrap_or_else(|| String::from("no upload id"));
 
     let result = run(client, &upload_id, bucket, key, &mut file).await;
 

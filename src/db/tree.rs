@@ -81,7 +81,7 @@ pub fn get(
             })
         })
         .into_iter()
-        .flat_map(|e| e)
+        .flatten()
         .collect()
 }
 

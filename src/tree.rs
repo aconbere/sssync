@@ -32,15 +32,15 @@ impl TreeDiff {
     pub fn new(older: &HashSet<TreeFile>, newer: &HashSet<TreeFile>) -> Self {
         // Additions are files in the more recent state that can't be found in the older state
         let additions: HashSet<TreeFile> =
-            newer.difference(&older).cloned().collect();
+            newer.difference(older).cloned().collect();
 
         // Deletions are files in older state that can no longer be found in the older state
         let deletions: HashSet<TreeFile> =
-            older.difference(&newer).cloned().collect();
+            older.difference(newer).cloned().collect();
 
         TreeDiff {
-            additions: additions,
-            deletions: deletions,
+            additions,
+            deletions,
         }
     }
 

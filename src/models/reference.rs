@@ -25,8 +25,8 @@ impl Reference {
         remote: Option<&str>,
     ) -> Self {
         Self {
+            kind,
             name: name.to_string(),
-            kind: kind,
             hash: hash.to_string(),
             remote: remote.map(|s| s.to_string()),
         }

@@ -16,7 +16,7 @@ pub fn create(
     connection: &Connection,
     kind: TransferKind,
     remote_name: &str,
-    object_hashes: &Vec<String>,
+    object_hashes: &[String],
 ) -> Result<Migration, Box<dyn Error>> {
     let remote = db::remote::get(connection, remote_name)?;
 
@@ -25,7 +25,7 @@ pub fn create(
 
     let transfers: Vec<Transfer> = object_hashes
         .iter()
-        .map(|h| Transfer::new(&migration.id, &h, kind.clone()))
+        .map(|h| Transfer::new(&migration.id, h, kind.clone()))
         .collect();
 
     for t in &transfers {
@@ -76,7 +76,7 @@ async fn run_upload(
 
     let upload_count = uploads.len();
 
-    db::migration::set_state(connection, &migration, MigrationState::Running)?;
+    db::migration::set_state(connection, migration, MigrationState::Running)?;
     for (i, upload) in uploads.iter().enumerate() {
         let remote_object_path =
             remote_object_path(remote_directory, &upload.object_hash);
@@ -84,7 +84,7 @@ async fn run_upload(
         let local_object_path =
             store::object_path(root_path, &upload.object_hash);
 
-        db::transfer::set_state(connection, &upload, TransferState::Running)?;
+        db::transfer::set_state(connection, upload, TransferState::Running)?;
         println!("Upload {}/{}", i, upload_count);
         println!(
             "Uploading {} to {}",
@@ -105,7 +105,7 @@ async fn run_upload(
             Ok(_) => {
                 db::transfer::set_state(
                     connection,
-                    &upload,
+                    upload,
                     TransferState::Complete,
                 )?;
                 Ok(())
@@ -113,14 +113,14 @@ async fn run_upload(
             Err(e) => {
                 db::transfer::set_state(
                     connection,
-                    &upload,
+                    upload,
                     TransferState::Failed,
                 )?;
                 Err(e)
             }
         }?
     }
-    db::migration::set_state(connection, &migration, MigrationState::Complete)?;
+    db::migration::set_state(connection, migration, MigrationState::Complete)?;
     Ok(())
 }
 
@@ -145,7 +145,7 @@ pub async fn run_download(
 
     let download_count = downloads.len();
 
-    db::migration::set_state(connection, &migration, MigrationState::Running)?;
+    db::migration::set_state(connection, migration, MigrationState::Running)?;
     for (i, download) in downloads.iter().enumerate() {
         let remote_object_path =
             remote_object_path(remote_directory, &download.object_hash);
@@ -179,7 +179,7 @@ pub async fn run_download(
             Ok(_) => {
                 db::transfer::set_state(
                     connection,
-                    &download,
+                    download,
                     TransferState::Complete,
                 )?;
                 Ok(())
@@ -187,13 +187,13 @@ pub async fn run_download(
             Err(e) => {
                 db::transfer::set_state(
                     connection,
-                    &download,
+                    download,
                     TransferState::Failed,
                 )?;
                 Err(e)
             }
         }?
     }
-    db::migration::set_state(connection, &migration, MigrationState::Complete)?;
+    db::migration::set_state(connection, migration, MigrationState::Complete)?;
     Ok(())
 }

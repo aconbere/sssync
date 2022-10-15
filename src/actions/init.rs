@@ -16,7 +16,7 @@ pub fn init(path: &Path) -> Result<(), Box<dyn Error>> {
         .into());
     }
 
-    let root_path = store::get_root_path(&path);
+    let root_path = store::get_root_path(path);
 
     if root_path.is_some() {
         return Err(format!(
@@ -26,9 +26,9 @@ pub fn init(path: &Path) -> Result<(), Box<dyn Error>> {
         .into());
     }
     println!("initializing sssync in: {}", path.display());
-    store::init(&path)?;
+    store::init(path)?;
 
-    let connection = Connection::open(repo_db_path(&path))?;
+    let connection = Connection::open(repo_db_path(path))?;
     db::init(&connection)?;
     Ok(())
 }

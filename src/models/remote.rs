@@ -16,7 +16,7 @@ pub fn remote_object_path(url: &str, hash: &str) -> Result<Url, ParseError> {
         host_str = u.host_str().unwrap_or(""),
         path = p.to_str().unwrap(),
     );
-    return Url::parse(&new_url);
+    Url::parse(&new_url)
 }
 
 pub struct Remote {
@@ -32,8 +32,8 @@ impl Remote {
         location: &str,
     ) -> Result<Self, Box<dyn Error>> {
         Ok(Self {
+            kind,
             name: name.to_string(),
-            kind: kind,
             location: location.to_string(),
         })
     }

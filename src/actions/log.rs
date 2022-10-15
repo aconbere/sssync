@@ -16,10 +16,9 @@ pub fn log(connection: &Connection) -> Result<(), Box<dyn Error>> {
         println!("Date: {}", commit.created_unix_timestamp);
         println!(
             "Parent: {}",
-            commit.parent_hash.unwrap_or(String::from("None"))
+            commit.parent_hash.unwrap_or_else(|| String::from("None"))
         );
-        println!("");
-        println!("\t{}", commit.comment);
+        println!("\n\t{}", commit.comment);
     });
     Ok(())
 }

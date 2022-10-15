@@ -16,12 +16,10 @@ pub fn add(
     let meta = db::meta::get(connection)?;
     let head = db::commit::get_by_ref_name(connection, &meta.head)?;
 
-    let commit_hash = if hash.is_some() {
-        hash.unwrap()
-    } else if head.is_some() {
-        head.unwrap().hash
-    } else {
-        return Err("Could not find hash".into());
+    let commit_hash = match (hash, head) {
+        (Some(_hash), None) => _hash,
+        (None, Some(_head)) => _head.hash,
+        _ => return Err("Could not find hash".into()),
     };
 
     db::reference::insert(

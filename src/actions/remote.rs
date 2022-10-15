@@ -22,7 +22,7 @@ pub fn add(
     kind: &RemoteKind,
     location: &str,
 ) -> Result<(), Box<dyn Error>> {
-    let remote = Remote::new(name, kind.clone(), location)?;
+    let remote = Remote::new(name, *kind, location)?;
     db::remote::insert(connection, &remote)
 }
 
@@ -97,18 +97,17 @@ pub async fn init(
                 .send()
                 .await;
 
-            if head_object_res.is_ok() {
-                if !force {
-                    println!("WARNING: remote already exists.");
-                    println!("\trun with --force to init anyway.");
-                    return Ok(());
-                }
+            if head_object_res.is_ok() && !force {
+                println!("WARNING: remote already exists.");
+                println!("\trun with --force to init anyway.");
+                return Ok(());
             }
 
             let local_db_path = store::db_path(root_path);
 
             let tree = db::tree::get(connection, &head.hash)?;
-            let hashes = tree.iter().map(|t| t.file_hash.to_string()).collect();
+            let hashes: Vec<String> =
+                tree.iter().map(|t| t.file_hash.to_string()).collect();
 
             let migration = crate::migration::create(
                 connection,
@@ -156,7 +155,7 @@ pub async fn push(
 
             let remote_db = crate::remote::fetch_remote_database(
                 &client,
-                &root_path,
+                root_path,
                 remote.kind,
                 &remote.name,
                 &remote.location,
@@ -182,7 +181,7 @@ pub async fn push(
                 commit::diff_commit_list_left(&commits, &remote_commits)?;
             let additions = db::tree::additions(connection, &ff_commits)?;
 
-            let hashes =
+            let hashes: Vec<String> =
                 additions.iter().map(|d| d.file_hash.to_string()).collect();
 
             let migration = crate::migration::create(
@@ -199,7 +198,7 @@ pub async fn push(
             println!(
                 "Uploading database from {} to {}",
                 &remote_directory.display(),
-                &root_path.display()
+                root_path.display()
             );
             upload_multipart(
                 &client,
@@ -235,7 +234,7 @@ pub async fn fetch_remote_database(
 
             let remote_path = crate::remote::fetch_remote_database(
                 &client,
-                &root_path,
+                root_path,
                 remote.kind,
                 &remote.name,
                 &remote.location,

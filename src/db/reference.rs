@@ -91,7 +91,7 @@ pub fn get_all_by_kind(
             })
         })
         .into_iter()
-        .flat_map(|e| e)
+        .flatten()
         .collect()
 }
 

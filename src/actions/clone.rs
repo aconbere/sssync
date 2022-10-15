@@ -12,7 +12,7 @@ use crate::store;
 use crate::types::remote_kind::RemoteKind;
 
 pub async fn clone(
-    url_str: &String,
+    url_str: &str,
     destination: &Path,
 ) -> Result<(), Box<dyn Error>> {
     if destination.exists() {
@@ -23,7 +23,7 @@ pub async fn clone(
         .into());
     }
 
-    let root_path = store::get_root_path(&destination);
+    let root_path = store::get_root_path(destination);
 
     if root_path.is_some() {
         return Err(format!(
@@ -48,7 +48,7 @@ pub async fn clone(
     println!("Fetching remote db");
     let remote_db_path = crate::remote::fetch_remote_database(
         &client,
-        &destination,
+        destination,
         RemoteKind::S3,
         remote_name,
         url_str,
@@ -94,7 +94,7 @@ pub async fn clone(
     for f in files {
         let p = &local_path.join(f.path);
         println!("Copying {} -> {}", f.file_hash, p.display());
-        store::export_to(&local_path, &f.file_hash, &p)?;
+        store::export_to(&local_path, &f.file_hash, p)?;
     }
 
     Ok(())

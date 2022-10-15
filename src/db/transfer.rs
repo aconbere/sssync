@@ -71,7 +71,7 @@ pub fn get_all(
             })
         })
         .into_iter()
-        .flat_map(|e| e)
+        .flatten()
         .collect()
 }
 
@@ -101,7 +101,7 @@ pub fn get_all_with_state(
             })
         })
         .into_iter()
-        .flat_map(|e| e)
+        .flatten()
         .collect()
 }
 

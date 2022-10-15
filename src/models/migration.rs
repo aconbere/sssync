@@ -79,9 +79,9 @@ pub struct Migration {
 impl Migration {
     pub fn new(kind: TransferKind, remote: &Remote) -> Self {
         Self {
+            kind,
             id: Uuid::new_v4().hyphenated().to_string(),
             state: MigrationState::Waiting,
-            kind: kind,
             remote_location: remote.location.to_string(),
             remote_kind: remote.kind,
             remote_name: remote.name.to_string(),

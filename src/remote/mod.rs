@@ -28,7 +28,7 @@ pub async fn fetch_remote_database(
             let db_path = directory.join(".sssync/sssync.db");
 
             download_object(
-                &client,
+                client,
                 bucket,
                 db_path.to_str().unwrap(),
                 &mut copy_file,

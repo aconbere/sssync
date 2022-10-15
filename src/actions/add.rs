@@ -36,8 +36,8 @@ pub fn add(
     }
 
     let staged_file =
-        staged_file::StagedFile::new(&root_path.join(&rel_path), &rel_path)?;
-    store::insert_from(root_path, &staged_file.file_hash, &rel_path)?;
+        staged_file::StagedFile::new(&root_path.join(rel_path), rel_path)?;
+    store::insert_from(root_path, &staged_file.file_hash, rel_path)?;
     db::staging::insert(
         connection,
         &staged_file::Change::Addition(staged_file),
