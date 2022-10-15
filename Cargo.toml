@@ -1,7 +1,15 @@
 [package]
 name = "sssync"
+description = "A version control system for large files backed by online blob storage"
+license-file = "LICENSE"
+homepage = "https://github.com/aconbere/sssync"
+repository = "https://github.com/aconbere/sssync"
+documentation = "https://github.com/aconbere/sssync/blob/main/README.md"
+readme = "https://github.com/aconbere/sssync/blob/main/README.md"
 version = "0.1.0"
 edition = "2021"
+keywords = ["version-control", "cli"]
+categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
