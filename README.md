@@ -1,7 +1,47 @@
 # sssync
-s3 file sync tool
 
-# .sssync
+Sssync is a version control system oriented around addressing two limitations of Git; The ability to work with large files, and the ability to easily store those files into online blob storage.
+
+It works a bit like git, where every file is hashed and stored and tracked in commits, that themselves are hashed and tracked and stored. However, it uses a xxhash instead of SHA1 in order to improve the performance of hashing large files, and it has the ability to use an S3 bucket as a remote storage backend.
+
+Sssync doesn't solve any of the binary file duplication challanges around using git, so it's best suited for a collection of files that while large, aren't expected to change that frequently.
+
+## How to use it
+
+### Initialize a new sssync repository
+
+Inside of whatever directory you want to start managing with sssync, run:
+
+```bash
+> sssync init .
+```
+
+This will generate a new directory `.sssync` and set up the repository. Once that's done you can run `sssync add` to stage files for addition, and `sssync commit` to add the staged changes to the repository.
+
+### Setting up a remote
+
+Sssync has the ability to use S3 as a remote backend. To set up an S3 remote run the following:
+
+```bash
+# sssync remote add <remote-name> <s3-url>
+> sssync remote add new-remote s3://example.com/path/to/bucket
+```
+
+Then initialize the remote:
+
+```bash
+# sssync remote init <remote-name>
+> sssync remote init new-remote
+```
+
+After this you can push changes to the remote:
+
+```bash
+# sssync remote push <remote-name>
+> sssync remote push new-remote
+```
+
+# How it works
 
 Sssync init creates a directory .sssnyc in the given directory. This directory contains the sssync.db file as well as two other directories: `objects` and `remotes`.
 

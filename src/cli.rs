@@ -5,8 +5,8 @@ use clap::{Parser, Subcommand};
 use rusqlite::Connection;
 
 use crate::actions::{
-    add, branch, checkout, clone, commit, init, log, migration, remote, reset,
-    status, tree, update,
+    add, branch, clone, commit, diff, init, log, migration, remote, reset,
+    status, tree,
 };
 use crate::db::repo_db_path;
 use crate::store::get_root_path;
@@ -17,62 +17,82 @@ use crate::types::remote_kind::RemoteKind;
 #[command(author = "Anders Conbere<anders@conbere.org>")]
 #[command(version = "0.1")]
 #[command(about = "Keep big files in sync in S3", long_about = None)]
-#[clap(author, version, about, long_about = None)]
 pub struct Cli {
-    #[clap(subcommand)]
+    #[command(subcommand)]
     action: Action,
 }
 
 #[derive(Subcommand, Debug)]
 pub enum Branch {
+    /// Add a branch to the repository
     Add { name: String },
+
+    /// Switch to the branch [name]
     Switch { name: String },
+
+    /// List all branches
     List,
 }
 
 #[derive(Subcommand, Debug)]
 pub enum Migration {
+    /// List all migrations
     List,
+    /// Show the status of migration [id]
     Show { id: String },
 }
 
 #[derive(Subcommand, Debug)]
 pub enum Remote {
+    /// Add a remote to the repository
     Add {
+        /// Name of the remote
         name: String,
 
+        /// Only s3 for now
         #[arg(long)]
         #[arg(value_enum)]
         kind: RemoteKind,
 
-        #[clap(long)]
+        /// URL referencing where the remote will exist
+        #[arg(long)]
         location: String,
     },
+    /// List all the remotes
     List,
+
+    /// Initialize the remote
     Init {
+        /// Name of the remote to initialize
         name: String,
 
         #[arg(long)]
         force: bool,
     },
-    Push {
-        name: String,
-    },
-    FetchRemoteDB {
-        name: String,
-    },
+
+    /// Push latest change to the remote
+    Push { name: String },
+    /// Fetches just the remote database
+    FetchRemoteDB { name: String },
+
+    /// Pushes just the remote database:
+    /// Useful when needing to patch up the database with changes
     PushRemoteDB {
         name: String,
 
         #[arg(long)]
         force: bool,
     },
-    Remove {
-        name: String,
-    },
+
+    /// Remove a remote
+    Remove { name: String },
+
+    /// Locate a local file in the remote
     Locate {
+        /// Remote to look into
         name: String,
 
+        /// Local file path to find the remote location of
         #[arg(long)]
         path: PathBuf,
     },
@@ -80,41 +100,61 @@ pub enum Remote {
 
 #[derive(Subcommand, Debug)]
 pub enum Action {
-    Checkout {
-        hash: String,
+    /// Subcommands to manage remotes
+    Remote {
+        #[command(subcommand)]
+        action: Remote,
     },
-    Reset,
-    Log,
-    Commit,
-    Status,
-    Update {
-        remote: String,
+
+    /// Subcommands to manage branches
+    Branch {
+        #[command(subcommand)]
+        action: Branch,
     },
+
+    /// Subcommands to manage migrations
+    Migration {
+        #[command(subcommand)]
+        action: Migration,
+    },
+
+    /// Initialize a new repository
     Init {
         path: PathBuf,
     },
+
+    /// Add files to be staged
     Add {
         path: PathBuf,
     },
+
+    /// Commit changes to a repository
+    Commit,
+
+    /// Clone the remote located at [url] to destination [path]
+    Clone {
+        /// location of the remote. For now only supports s3 urls
+        url: String,
+        /// Destination to clone into
+        path: PathBuf,
+    },
+
+    /// Show the list of commits starting at HEAD
+    Log,
+
+    /// Show the status of the repository
+    Status,
+
+    /// Print a representation of the tree at hash
     Tree {
         hash: String,
     },
-    Clone {
-        url: String,
-        path: PathBuf,
+
+    /// Print what files are different between HEAD and [hash]
+    Diff {
+        hash: String,
     },
-    Remote {
-        #[clap(subcommand)]
-        action: Remote,
-    },
-    Branch {
-        #[clap(subcommand)]
-        action: Branch,
-    },
-    Migration {
-        #[clap(subcommand)]
-        action: Migration,
-    },
+    Reset,
 }
 
 pub fn run() -> Result<(), Box<dyn Error>> {
@@ -230,13 +270,8 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             add::add(&connection, root_path, rel_path)
         }
         Action::Log => log::log(&connection),
-        Action::Checkout { hash } => checkout::checkout(&connection, hash),
+        Action::Diff { hash } => diff::diff(&connection, hash),
         Action::Reset => reset::reset(&connection, root_path),
         Action::Tree { hash } => tree::tree(&connection, hash),
-        Action::Update { remote } => {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(update::update(&connection, root_path, remote))?;
-            Ok(())
-        }
     }
 }

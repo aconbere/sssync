@@ -5,10 +5,7 @@ use rusqlite::Connection;
 use crate::db;
 use crate::tree::TreeDiff;
 
-pub fn checkout(
-    connection: &Connection,
-    hash: &str,
-) -> Result<(), Box<dyn Error>> {
+pub fn diff(connection: &Connection, hash: &str) -> Result<(), Box<dyn Error>> {
     let staged_files = db::staging::get_all(connection)?;
 
     if !staged_files.is_empty() {
