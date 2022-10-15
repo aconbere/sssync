@@ -20,7 +20,7 @@ pub async fn update(
 
             crate::remote::fetch_remote_database(
                 &client,
-                &root_path,
+                root_path,
                 remote.kind,
                 &remote.name,
                 &remote.location,

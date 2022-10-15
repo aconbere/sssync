@@ -31,7 +31,7 @@ pub async fn download_object(
         .await?;
 
     while let Some(bytes) = resp.body.try_next().await? {
-        writer.write(&bytes)?;
+        writer.write_all(&bytes)?;
     }
 
     Ok(resp.body)

@@ -19,13 +19,6 @@ impl RemoteKind {
             _ => Err(format!("invalid kind: {}", s)),
         }
     }
-
-    pub fn to_str(&self) -> &str {
-        match &self {
-            RemoteKind::S3 => "S3",
-            RemoteKind::Local => "local",
-        }
-    }
 }
 
 impl FromSql for RemoteKind {
@@ -39,7 +32,7 @@ impl FromSql for RemoteKind {
 
 impl ToSql for RemoteKind {
     fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
-        Ok(ToSqlOutput::from(self.to_str()))
+        Ok(ToSqlOutput::from(self.to_string()))
     }
 }
 

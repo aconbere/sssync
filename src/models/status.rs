@@ -54,47 +54,43 @@ pub struct Status {
 
 impl fmt::Display for Status {
     fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
-        write!(w, "On branch: {}\n", self.ref_name)?;
+        writeln!(w, "On branch: {}", self.ref_name)?;
 
         if !self.staged_additions.is_empty() {
-            write!(w, "\n")?;
-            write!(w, "Files staged to be added:\n")?;
+            writeln!(w, "\nFiles staged to be added:")?;
             for f in &self.staged_additions {
                 if self.staged_but_changed.contains(f) {
-                    write!(w, "\tmodified: {}\n", f.to_str().unwrap())?;
+                    writeln!(w, "\tmodified: {}", f.to_str().unwrap())?;
                 } else if self.staged_but_deleted.contains(f) {
-                    write!(w, "\tdeleted: {}\n", f.to_str().unwrap())?;
+                    writeln!(w, "\tdeleted: {}", f.to_str().unwrap())?;
                 } else {
-                    write!(w, "\tadded: {}\n", f.to_str().unwrap())?;
+                    writeln!(w, "\tadded: {}", f.to_str().unwrap())?;
                 }
             }
         }
 
         if !self.staged_deletions.is_empty() {
-            write!(w, "\n")?;
-            write!(w, "Files staged to be deleted:\n")?;
+            writeln!(w, "\nFiles staged to be deleted:")?;
             for f in &self.staged_deletions {
                 if self.staged_but_added.contains(f) {
-                    write!(w, "\tadded: {}\n", f.to_str().unwrap())?;
+                    writeln!(w, "\tadded: {}", f.to_str().unwrap())?;
                 } else {
-                    write!(w, "\tdeleted: {}\n", f.to_str().unwrap())?;
+                    writeln!(w, "\tdeleted: {}", f.to_str().unwrap())?;
                 }
             }
         }
 
         if !self.unstaged_additions.is_empty() {
-            write!(w, "\n")?;
-            write!(w, "Unstaged additions:\n")?;
+            writeln!(w, "\nUnstaged additions:")?;
             for f in &self.unstaged_additions {
-                write!(w, "\tmodified: {}\n", f.to_str().unwrap())?;
+                writeln!(w, "\tmodified: {}", f.to_str().unwrap())?;
             }
         }
 
         if !self.unstaged_deletions.is_empty() {
-            write!(w, "\n")?;
-            write!(w, "Unstaged deletions:\n")?;
+            writeln!(w, "\nUnstaged deletions:")?;
             for f in &self.unstaged_deletions {
-                write!(w, "\tdeleted: {}\n", f.to_str().unwrap())?;
+                writeln!(w, "\tdeleted: {}", f.to_str().unwrap())?;
             }
         }
 
@@ -165,7 +161,7 @@ impl Status {
                 let full_path = root_path.join(&sf.path);
 
                 if sf.compare_lstat(&full_path).unwrap_or(false) {
-                    staged_but_changed.insert(path.clone());
+                    staged_but_changed.insert(path);
                 } else if !disk_files.contains(&path) {
                     staged_but_deleted.insert(path);
                 }
@@ -219,15 +215,15 @@ impl Status {
         });
 
         Ok(Status {
-            tracked_files: tracked_files,
-            staged_additions: staged_additions,
-            staged_deletions: staged_deletions,
-            staged_but_changed: staged_but_changed,
-            staged_but_deleted: staged_but_deleted,
-            staged_but_added: staged_but_added,
-            unstaged_additions: unstaged_additions,
-            unstaged_deletions: unstaged_deletions,
-            head: head,
+            tracked_files,
+            staged_additions,
+            staged_deletions,
+            staged_but_changed,
+            staged_but_deleted,
+            staged_but_added,
+            unstaged_additions,
+            unstaged_deletions,
+            head,
             ref_name: meta.head,
         })
     }
@@ -240,23 +236,23 @@ pub enum IntermediateTree {
 }
 
 pub fn intermediate_to_tree_files(
-    files: &Vec<IntermediateTree>,
+    files: &[IntermediateTree],
     commit_hash: &str,
 ) -> Vec<TreeFile> {
     files
-        .into_iter()
+        .iter()
         .map(|i_f| match i_f {
-            IntermediateTree::Staged(sf) => sf.to_tree_file(&commit_hash),
+            IntermediateTree::Staged(sf) => sf.to_tree_file(commit_hash),
             IntermediateTree::Committed(tf) => {
-                tf.update_commit_hash(&commit_hash)
+                tf.update_commit_hash(commit_hash)
             }
         })
         .collect()
 }
 
-pub fn hash_all(files: &Vec<IntermediateTree>) -> String {
+pub fn hash_all(files: &[IntermediateTree]) -> String {
     let hashes: Vec<&str> = files
-        .into_iter()
+        .iter()
         .map(|f| match f {
             IntermediateTree::Staged(sf) => sf.file_hash.as_str(),
             IntermediateTree::Committed(tf) => tf.file_hash.as_str(),

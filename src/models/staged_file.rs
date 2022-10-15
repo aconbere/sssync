@@ -30,20 +30,20 @@ impl StagedFile {
             .ok_or(format!("Invalid path: {}", relative_path.display()))?;
 
         Ok(Self {
+            file_hash,
             path: relative_path_str.to_string(),
-            file_hash: file_hash,
             size_bytes: meta.st_size,
             modified_time_seconds: meta.st_mtime,
         })
     }
 
     pub fn to_tree_file(&self, commit_hash: &str) -> TreeFile {
-        return TreeFile {
+        TreeFile {
             path: self.path.clone(),
             file_hash: self.file_hash.clone(),
             size_bytes: self.size_bytes,
             commit_hash: String::from(commit_hash),
-        };
+        }
     }
 
     // Lstat the file found at path and compare the results to the StagedFile compares size_bytes

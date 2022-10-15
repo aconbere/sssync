@@ -4,9 +4,9 @@ use std::io;
 use std::io::Write;
 use std::path::Path;
 
-use hex;
 use xxhash_rust::xxh3::{xxh3_128, Xxh3};
 
+#[allow(clippy::needless_range_loop)]
 fn u128_to_byte_array(n: u128) -> [u8; 16] {
     let mut out: [u8; 16] = [0; 16];
 
@@ -32,11 +32,11 @@ impl Xxh3Writer {
 impl Write for Xxh3Writer {
     fn write(&mut self, buf: &[u8]) -> Result<usize, io::Error> {
         self.hasher.update(buf);
-        return Ok(buf.len());
+        Ok(buf.len())
     }
 
     fn flush(&mut self) -> Result<(), io::Error> {
-        return Ok(());
+        Ok(())
     }
 }
 

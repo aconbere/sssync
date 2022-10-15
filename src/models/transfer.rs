@@ -107,7 +107,7 @@ impl Transfer {
             migration_id: migration_id.to_string(),
             object_hash: object_hash.to_string(),
             state: TransferState::Waiting,
-            kind: kind,
+            kind,
         }
     }
 }

@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Commit {
     pub hash: String,
     pub comment: String,
@@ -19,11 +19,11 @@ impl Commit {
     ) -> Result<Commit, Box<dyn Error>> {
         let time = SystemTime::now().duration_since(UNIX_EPOCH)?;
         Ok(Commit {
+            parent_hash,
             hash: hash.to_string(),
             comment: comment.to_string(),
             author: author.to_string(),
             created_unix_timestamp: time.as_secs(),
-            parent_hash: parent_hash,
         })
     }
 }
@@ -52,61 +52,42 @@ impl Commit {
 //
 //      assert_eq!(result, Some(commit_b));
 //
-pub fn get_shared_parent(
-    left: &Vec<Commit>,
-    right: &Vec<Commit>,
-) -> Option<Commit> {
+pub fn get_shared_parent(left: &[Commit], right: &[Commit]) -> Option<Commit> {
     let mut shared_parent = None;
 
     let mut left_i = left.len() - 1;
     let mut right_i = right.len() - 1;
 
-    loop {
-        match (left.get(left_i), right.get(right_i)) {
-            (Some(l), Some(r)) => {
-                if l.hash == r.hash {
-                    shared_parent = Some(left[left_i].clone());
-                    if left_i == 0 || right_i == 0 {
-                        break;
-                    }
-                    left_i -= 1;
-                    right_i -= 1;
-                } else {
-                    break;
-                }
+    while let (Some(l), Some(r)) = (left.get(left_i), right.get(right_i)) {
+        if l.hash == r.hash {
+            shared_parent = Some(left[left_i].clone());
+            if left_i == 0 || right_i == 0 {
+                break;
             }
-            _ => break,
+            left_i -= 1;
+            right_i -= 1;
+        } else {
+            break;
         }
     }
 
-    return shared_parent.clone();
+    shared_parent
 }
 
 /* Takes a list of ordered commits and returns the tail of that list following a commit who's hash
  * matches "needle".
  */
-pub fn commits_since(
-    haystack: &Vec<Commit>,
-    needle: &Commit,
-) -> Option<Vec<Commit>> {
+pub fn commits_since(haystack: &Vec<Commit>, needle: &Commit) -> Vec<Commit> {
     let mut diff: Vec<Commit> = vec![];
-    let mut found = false;
 
-    for i in 0..haystack.len() {
-        let l = &haystack[i];
-
+    for l in haystack {
         if l.hash == needle.hash {
-            found = true;
             break;
         }
-        diff.push(haystack[i].clone());
+        diff.push(l.clone());
     }
 
-    if !found {
-        None
-    } else {
-        Some(diff)
-    }
+    diff
 }
 
 pub enum CompareResult {
@@ -126,11 +107,11 @@ pub fn diff_commit_list(
 ) -> CompareResult {
     if let Some(shared_parent) = get_shared_parent(left, right) {
         CompareResult::Diff {
-            left: commits_since(&left, &shared_parent).unwrap(),
-            right: commits_since(&right, &shared_parent).unwrap(),
+            left: commits_since(left, &shared_parent),
+            right: commits_since(right, &shared_parent),
         }
     } else {
-        return CompareResult::NoSharedParent;
+        CompareResult::NoSharedParent
     }
 }
 
@@ -138,23 +119,19 @@ pub fn diff_commit_list_left(
     left: &Vec<Commit>,
     right: &Vec<Commit>,
 ) -> Result<Vec<Commit>, Box<dyn Error>> {
-    match diff_commit_list(&left, &right) {
+    match diff_commit_list(left, right) {
         CompareResult::NoSharedParent => {
-            return Err("Remote has no shared parent".into())
+            Err("Remote has no shared parent".into())
         }
         CompareResult::Diff { left, right } => {
-            if right.len() > 0 {
-                return Err(
-                    "no fast forward, remote has commits not in the current db"
-                        .into(),
-                );
+            if !right.is_empty() {
+                Err("no fast forward, remote has commits not in the current db"
+                    .into())
+            } else if left.is_empty() {
+                Err("no differences between remote and local".into())
+            } else {
+                Ok(left)
             }
-
-            if left.len() == 0 {
-                return Err("no differences between remote and local".into());
-            }
-
-            Ok(left)
         }
     }
 }

@@ -29,7 +29,7 @@ impl TreeFile {
         Self {
             path: self.path.clone(),
             file_hash: self.file_hash.clone(),
-            size_bytes: self.size_bytes.clone(),
+            size_bytes: self.size_bytes,
             commit_hash: String::from(commit_hash),
         }
     }

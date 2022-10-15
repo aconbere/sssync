@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand};
 use rusqlite::Connection;
-use tokio;
 
 use crate::actions::{
     add, branch, checkout, clone, commit, init, log, migration, remote, reset,
@@ -140,7 +139,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
 
     let root_path = get_root_path(&pwd)
         .ok_or(format!("not in a sssync'd directory: {}", pwd.display()))?;
-    let connection = Connection::open(repo_db_path(&root_path))?;
+    let connection = Connection::open(repo_db_path(root_path))?;
 
     match &cli.action {
         Action::Remote { action } => match action {
@@ -157,7 +156,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(remote::init(
                     &connection,
-                    &root_path,
+                    root_path,
                     name,
                     *force,
                 ))?;
@@ -165,14 +164,14 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             }
             Remote::Push { name } => {
                 let rt = tokio::runtime::Runtime::new().unwrap();
-                rt.block_on(remote::push(&connection, &root_path, name))?;
+                rt.block_on(remote::push(&connection, root_path, name))?;
                 Ok(())
             }
             Remote::FetchRemoteDB { name } => {
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(remote::fetch_remote_database(
                     &connection,
-                    &root_path,
+                    root_path,
                     name,
                 ))?;
                 Ok(())
@@ -181,7 +180,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(remote::push_remote_database(
                     &connection,
-                    &root_path,
+                    root_path,
                     name,
                     *force,
                 ))?;
@@ -199,7 +198,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         Action::Branch { action } => match action {
             Branch::Add { name } => branch::add(&connection, name, None),
             Branch::Switch { name } => {
-                branch::switch(&connection, &root_path, name)
+                branch::switch(&connection, root_path, name)
             }
             Branch::List => branch::list(&connection),
         },
@@ -210,13 +209,13 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             }
             Migration::Show { id } => migration::show(&connection, id),
         },
-        Action::Commit => commit::commit(&connection, &root_path),
+        Action::Commit => commit::commit(&connection, root_path),
         Action::Clone { url, path } => {
             println!("Action::Clone {} {}", url, path.display());
             Ok(())
         }
         Action::Status => {
-            status::status(&connection, &root_path)?;
+            status::status(&connection, root_path)?;
             Ok(())
         }
         Action::Init { path } => {
@@ -228,15 +227,15 @@ pub fn run() -> Result<(), Box<dyn Error>> {
         Action::Add { path } => {
             let cp = path.canonicalize()?;
             let rel_path = cp.strip_prefix(root_path)?;
-            add::add(&connection, &root_path, &rel_path)
+            add::add(&connection, root_path, rel_path)
         }
         Action::Log => log::log(&connection),
         Action::Checkout { hash } => checkout::checkout(&connection, hash),
-        Action::Reset => reset::reset(&connection, &root_path),
+        Action::Reset => reset::reset(&connection, root_path),
         Action::Tree { hash } => tree::tree(&connection, hash),
         Action::Update { remote } => {
             let rt = tokio::runtime::Runtime::new().unwrap();
-            rt.block_on(update::update(&connection, &root_path, remote))?;
+            rt.block_on(update::update(&connection, root_path, remote))?;
             Ok(())
         }
     }
