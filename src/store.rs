@@ -50,8 +50,11 @@ pub fn export_to(
     hash: &str,
     destination: &Path,
 ) -> Result<(), Box<dyn Error>> {
-    let p = object_path(root_path, hash);
-    fs::copy(p, destination)?;
+    // Ensure the directory where we're going to write this file exists
+    if let Some(parent) = destination.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::copy(object_path(root_path, hash), destination)?;
     Ok(())
 }
 

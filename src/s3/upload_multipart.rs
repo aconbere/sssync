@@ -27,7 +27,7 @@ pub async fn upload_multipart(
         let head_object_res =
             client.head_object().bucket(bucket).key(key).send().await;
         if head_object_res.is_ok() {
-            return Ok(());
+            return Err("Skipping upload: File already exists.".into());
         }
     }
 

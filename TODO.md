@@ -1,3 +1,6 @@
+# Store
+- When exporting to a path need to enable building intermediate directories
+
 # Remote
 ## Attach a file validity header to the put request
 - https://docs.aws.amazon.com/AmazonS3/latest/userguide/checking-object-integrity.html

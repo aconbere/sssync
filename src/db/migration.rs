@@ -30,7 +30,14 @@ pub fn insert(
     connection.execute(
         "
         INSERT INTO
-            migrations (id, kind, remote_name, remote_kind, remote_location, state)
+            migrations (
+                id,
+                kind,
+                remote_name,
+                remote_kind,
+                remote_location,
+                state
+            )
         VALUES
             (?1, ?2, ?3, ?4, ?5, ?6)
         ",

@@ -28,7 +28,12 @@ pub fn insert(
     connection.execute(
         "
         INSERT INTO
-            transfers (migration_id, object_hash, state)
+            transfers (
+                migration_id,
+                object_hash,
+                state,
+                kind
+            )
         VALUES
             (?1, ?2, ?3, ?4)
         ",
