@@ -6,7 +6,7 @@ use std::path::Path;
 use crate::models::tree_file::TreeFile;
 use crate::store;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct TreeDiff {
     pub additions: HashSet<TreeFile>,
     pub deletions: HashSet<TreeFile>,
