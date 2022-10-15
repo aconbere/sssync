@@ -6,6 +6,14 @@ It works a bit like git, where every file is hashed and stored and tracked in co
 
 Sssync doesn't solve any of the binary file duplication challanges around using git, so it's best suited for a collection of files that while large, aren't expected to change that frequently.
 
+## How to get it
+
+Sssync is available on [crates.io](https://crates.io/crates/sssync). You can install it with:
+
+```bash
+> cargo install sssync
+```
+
 ## How to use it
 
 ### Initialize a new sssync repository
