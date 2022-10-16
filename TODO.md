@@ -12,3 +12,5 @@
 - Change permissions?
 - Publish a file to a shared directory?
 
+# Bugs
+- Remote push isn't narrowing the set of files correctly. Always tries to upload all files in the most recent commit. This isn't terrible because we check head first. But it shouldn't be happening

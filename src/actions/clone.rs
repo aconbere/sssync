@@ -87,7 +87,7 @@ pub async fn clone(
     )?;
     println!("Starting migration: {}", migration.id);
 
-    migration::run(&connection, &local_path, &migration, false).await?;
+    migration::run(&connection, &local_path, &migration, false, true).await?;
 
     println!("Complete");
 

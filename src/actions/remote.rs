@@ -117,8 +117,10 @@ pub async fn init(
             )?;
 
             println!("Running Migration");
-            crate::migration::run(connection, root_path, &migration, force)
-                .await?;
+            crate::migration::run(
+                connection, root_path, &migration, force, true,
+            )
+            .await?;
 
             upload_multipart(
                 &client,
@@ -192,8 +194,10 @@ pub async fn push(
             )?;
 
             println!("Running Migration");
-            crate::migration::run(connection, root_path, &migration, false)
-                .await?;
+            crate::migration::run(
+                connection, root_path, &migration, false, true,
+            )
+            .await?;
 
             println!(
                 "Uploading database from {} to {}",

@@ -40,13 +40,22 @@ pub async fn run(
     root_path: &Path,
     migration: &Migration,
     force: bool,
+    ignore_existing: bool,
 ) -> Result<(), Box<dyn Error>> {
     match migration.kind {
         TransferKind::Upload => {
-            run_upload(connection, root_path, migration, force).await
+            run_upload(connection, root_path, migration, force, ignore_existing)
+                .await
         }
         TransferKind::Download => {
-            run_download(connection, root_path, migration, force).await
+            run_download(
+                connection,
+                root_path,
+                migration,
+                force,
+                ignore_existing,
+            )
+            .await
         }
     }
 }
@@ -60,6 +69,7 @@ async fn run_upload(
     root_path: &Path,
     migration: &Migration,
     force: bool,
+    ignore_existing: bool,
 ) -> Result<(), Box<dyn Error>> {
     let uploads =
         db::transfer::get_waiting_for_migration(connection, &migration.id)?;
@@ -101,24 +111,16 @@ async fn run_upload(
         )
         .await;
 
-        match result {
-            Ok(_) => {
-                db::transfer::set_state(
-                    connection,
-                    upload,
-                    TransferState::Complete,
-                )?;
-                Ok(())
-            }
-            Err(e) => {
-                db::transfer::set_state(
-                    connection,
-                    upload,
-                    TransferState::Failed,
-                )?;
-                Err(e)
-            }
-        }?
+        if result.is_ok() || ignore_existing {
+            db::transfer::set_state(
+                connection,
+                upload,
+                TransferState::Complete,
+            )?;
+        } else {
+            db::transfer::set_state(connection, upload, TransferState::Failed)?;
+            return Err(result.unwrap_err());
+        }
     }
     db::migration::set_state(connection, migration, MigrationState::Complete)?;
     Ok(())
@@ -129,6 +131,7 @@ pub async fn run_download(
     root_path: &Path,
     migration: &Migration,
     force: bool,
+    ignore_existing: bool,
 ) -> Result<(), Box<dyn Error>> {
     let downloads =
         db::transfer::get_waiting_for_migration(connection, &migration.id)?;
@@ -163,8 +166,16 @@ pub async fn run_download(
         );
 
         // If the file is already in our store skip it
-        if store::exists(root_path, &download.object_hash) && !force {
-            continue;
+        //
+        // If we've set force, overwrite the file
+        // If We've set ignore_existing continue
+        if store::exists(root_path, &download.object_hash) {
+            if ignore_existing {
+                continue;
+            }
+            if !force {
+                return Err(format!("File already found: {}, set `force` to override or ignore_existing to ignore", &download.object_hash).into());
+            }
         }
 
         let result = download_object(
