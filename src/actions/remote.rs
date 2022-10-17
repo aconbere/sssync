@@ -181,10 +181,12 @@ pub async fn push(
 
             let ff_commits =
                 commit::diff_commit_list_left(&commits, &remote_commits)?;
+            println!("ff commits: {:?}", ff_commits);
             let additions = db::tree::additions(connection, &ff_commits)?;
 
             let hashes: Vec<String> =
                 additions.iter().map(|d| d.file_hash.to_string()).collect();
+            println!("found count hashes: {}", hashes.len());
 
             let migration = crate::migration::create(
                 connection,
@@ -199,11 +201,26 @@ pub async fn push(
             )
             .await?;
 
+            println!("Updating remote db",);
+            println!("Adding commits");
+            for commit in ff_commits {
+                db::commit::insert(&remote_connection, &commit)?;
+            }
+            println!("Updating HEAD: {} {}", &meta.head, &head.hash);
+            db::reference::update(
+                &remote_connection,
+                &meta.head,
+                reference::Kind::Branch,
+                &head.hash,
+                None,
+            )?;
+
             println!(
                 "Uploading database from {} to {}",
                 &remote_directory.display(),
                 root_path.display()
             );
+
             upload_multipart(
                 &client,
                 bucket,

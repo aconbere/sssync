@@ -115,10 +115,13 @@ pub fn diff_commit_list(
     }
 }
 
+// Return the set of commits in left that aren't found in right
 pub fn diff_commit_list_left(
     left: &Vec<Commit>,
     right: &Vec<Commit>,
 ) -> Result<Vec<Commit>, Box<dyn Error>> {
+    println!("Left: {:?}", left);
+    println!("Right: {:?}", right);
     match diff_commit_list(left, right) {
         CompareResult::NoSharedParent => {
             Err("Remote has no shared parent".into())

@@ -10,7 +10,7 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     connection.execute(
         "
         CREATE TABLE
-            refs2 (
+            refs (
                 name TEXT NOT NULL,
                 kind TEXT NOT NULL,
                 hash TEXT NOT NULL,

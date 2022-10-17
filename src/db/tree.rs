@@ -110,6 +110,8 @@ pub fn get_by_path(
     })
 }
 
+/* Returns all the files added in all of the commits in commits
+ */
 pub fn additions(
     connection: &Connection,
     commits: &Vec<Commit>,
