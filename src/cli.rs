@@ -1,6 +1,6 @@
-use std::error::Error;
 use std::path::{Path, PathBuf};
 
+use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use rusqlite::Connection;
 
@@ -72,6 +72,7 @@ pub enum Remote {
 
     /// Push latest change to the remote
     Push { name: String },
+
     /// Fetches just the remote database
     FetchRemoteDB { name: String },
 
@@ -119,14 +120,10 @@ pub enum Action {
     },
 
     /// Initialize a new repository
-    Init {
-        path: PathBuf,
-    },
+    Init { path: PathBuf },
 
     /// Add files to be staged
-    Add {
-        path: PathBuf,
-    },
+    Add { path: PathBuf },
 
     /// Commit changes to a repository
     Commit,
@@ -135,6 +132,7 @@ pub enum Action {
     Clone {
         /// location of the remote. For now only supports s3 urls
         url: String,
+
         /// Destination to clone into
         path: PathBuf,
     },
@@ -146,31 +144,31 @@ pub enum Action {
     Status,
 
     /// Print a representation of the tree at hash
-    Tree {
-        hash: String,
-    },
+    Tree { hash: String },
 
     /// Print what files are different between HEAD and [hash]
-    Diff {
-        hash: String,
-    },
+    Diff { hash: String },
+
+    /// Clears currently staged changes
     Reset,
 }
 
-pub fn run() -> Result<(), Box<dyn Error>> {
+pub fn run() -> Result<()> {
     let cli = Cli::parse();
 
     let pwd = Path::new(".").canonicalize()?;
 
-    // Init isn't expected to be run with a valid root_path. We're special casing init so that we
-    // can provide convenient access to root_path for all the other commands.
+    // Init isn't expected to be run with a valid root_path. We're special
+    // casing init so that we can provide convenient access to root_path for
+    // all the other commands.
     if let Action::Init { path } = &cli.action {
         init::init(path)?;
         return Ok(());
     }
 
-    // Clone isn't expected to be run with a valid root_path. We're special casing init so that we
-    // can provide convenient access to root_path for all the other commands.
+    // Clone isn't expected to be run with a valid root_path. We're special
+    // casing init so that we can provide convenient access to root_path for
+    // all the other commands.
     if let Action::Clone { url, path } = &cli.action {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(clone::clone(url, path))?;
@@ -178,7 +176,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     }
 
     let root_path = get_root_path(&pwd)
-        .ok_or(format!("not in a sssync'd directory: {}", pwd.display()))?;
+        .ok_or(anyhow!("not in a sssync'd directory: {}", pwd.display()))?;
     let connection = Connection::open(repo_db_path(root_path))?;
 
     match &cli.action {
@@ -259,8 +257,9 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             Ok(())
         }
         Action::Init { path } => {
-            // This isn't expected to be run ever, it's special cased at the start
-            // but keeping it here means we still get type checking on enum coverage.
+            // This isn't expected to be run ever, it's special cased at the
+            // start but keeping it here means we still get type
+            // checking on enum coverage.
             println!("Action::Init {}", path.display());
             Ok(())
         }

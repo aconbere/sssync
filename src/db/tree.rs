@@ -1,17 +1,18 @@
 use std::collections::HashSet;
-use std::error::Error;
 use std::path::Path;
 
+use anyhow::Result;
 use rusqlite::params;
 use rusqlite::Connection;
 
 use crate::models::commit::Commit;
 use crate::models::tree_file::TreeFile;
 
-/* A Tree represents a flattened file tree: A heirchal list of files, each with a hash, a size in
- * bytes, and a commit hash that connects them to the rest of the sssync world.
+/* A Tree represents a flattened file tree: A heirchal list of files, each
+ * with a hash, a size in bytes, and a commit hash that connects them to the
+ * rest of the sssync world.
  */
-pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
+pub fn create_table(connection: &Connection) -> Result<()> {
     connection.execute(
         "
         CREATE TABLE
@@ -27,10 +28,7 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn insert(
-    connection: &Connection,
-    tree_entry: &TreeFile,
-) -> Result<(), Box<dyn Error>> {
+pub fn insert(connection: &Connection, tree_entry: &TreeFile) -> Result<()> {
     connection.execute(
         "
         INSERT INTO trees (path, file_hash, size_bytes, commit_hash)
@@ -49,7 +47,7 @@ pub fn insert(
 pub fn insert_batch(
     connection: &Connection,
     tree_files: Vec<TreeFile>,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     for tf in tree_files {
         insert(connection, &tf)?;
     }
@@ -115,7 +113,7 @@ pub fn get_by_path(
 pub fn additions(
     connection: &Connection,
     commits: &Vec<Commit>,
-) -> Result<HashSet<TreeFile>, Box<dyn Error>> {
+) -> Result<HashSet<TreeFile>> {
     // Fast forward commits
     let mut init: HashSet<TreeFile> = HashSet::new();
 

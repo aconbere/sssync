@@ -1,7 +1,7 @@
-use std::error::Error;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
+use anyhow::Result;
 use aws_sdk_s3::Client;
 use url::Url;
 
@@ -15,7 +15,7 @@ pub async fn fetch_remote_database(
     remote_kind: RemoteKind,
     remote_name: &str,
     remote_location: &str,
-) -> Result<PathBuf, Box<dyn Error>> {
+) -> Result<PathBuf> {
     match remote_kind {
         RemoteKind::S3 => {
             let copy_path = store::remote_db_path(root_path, remote_name);

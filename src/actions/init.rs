@@ -1,15 +1,15 @@
-use std::error::Error;
 use std::path::Path;
 
+use anyhow::{anyhow, Result};
 use rusqlite::Connection;
 
 use crate::db;
 use crate::db::repo_db_path;
 use crate::store;
 
-pub fn init(path: &Path) -> Result<(), Box<dyn Error>> {
+pub fn init(path: &Path) -> Result<()> {
     if !path.is_dir() {
-        return Err(format!(
+        return Err(anyhow!(
             "desintation {} must be a directory",
             path.display()
         )
@@ -19,7 +19,7 @@ pub fn init(path: &Path) -> Result<(), Box<dyn Error>> {
     let root_path = store::get_root_path(path);
 
     if root_path.is_some() {
-        return Err(format!(
+        return Err(anyhow!(
             "desintation {} is already sssync'd",
             path.display()
         )

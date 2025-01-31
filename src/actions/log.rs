@@ -1,13 +1,12 @@
-use std::error::Error;
-
+use anyhow::{anyhow, Result};
 use rusqlite::Connection;
 
 use crate::db;
 
-pub fn log(connection: &Connection) -> Result<(), Box<dyn Error>> {
+pub fn log(connection: &Connection) -> Result<()> {
     let meta = db::meta::get(connection)?;
     let head = db::commit::get_by_ref_name(connection, &meta.head)?
-        .ok_or("No commit")?;
+        .ok_or(anyhow!("No commit"))?;
     let commits = db::commit::get_children(connection, &head.hash)?;
 
     commits.into_iter().for_each(|commit| {

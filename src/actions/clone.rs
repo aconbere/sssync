@@ -1,7 +1,7 @@
-use std::error::Error;
 use std::fs;
 use std::path::Path;
 
+use anyhow::{anyhow, Result};
 use rusqlite::Connection;
 
 use crate::db;
@@ -11,12 +11,9 @@ use crate::s3::make_client;
 use crate::store;
 use crate::types::remote_kind::RemoteKind;
 
-pub async fn clone(
-    url_str: &str,
-    destination: &Path,
-) -> Result<(), Box<dyn Error>> {
+pub async fn clone(url_str: &str, destination: &Path) -> Result<()> {
     if destination.exists() {
-        return Err(format!(
+        return Err(anyhow!(
             "desintation {} already exists",
             destination.display()
         )
@@ -26,7 +23,7 @@ pub async fn clone(
     let root_path = store::get_root_path(destination);
 
     if root_path.is_some() {
-        return Err(format!(
+        return Err(anyhow!(
             "desintation {} is already sssync'd",
             destination.display()
         )
@@ -70,7 +67,7 @@ pub async fn clone(
 
     println!("fetching head");
     let head = db::commit::get_by_ref_name(&connection, &meta.head)?
-        .ok_or("Head is bad - no matching ref name")?;
+        .ok_or(anyhow!("Head is bad - no matching ref name"))?;
 
     println!("fetching tree");
     let files = db::tree::get(&connection, &head.hash)?;

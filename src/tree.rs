@@ -1,10 +1,10 @@
 use std::collections::HashSet;
-use std::error::Error;
 use std::fs;
 use std::path::Path;
 
 use crate::models::tree_file::TreeFile;
 use crate::store;
+use anyhow::Result;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct TreeDiff {
@@ -19,22 +19,27 @@ impl TreeDiff {
     // b: what files were deleted?
     // c: what files were changed?
     //
-    // to do this we're going to first focus on file_hashes. We'll build a set of file_hashes for the
-    // newer and older. Any file_hashes in newer but not in older are either New or Changed. Any
-    // file_hashes in older but not in newer are deletions.
+    // to do this we're going to first focus on file_hashes. We'll build a set
+    // of file_hashes for the newer and older. Any file_hashes in newer but
+    // not in older are either New or Changed. Any file_hashes in older but
+    // not in newer are deletions.
     //
-    // Now that we have new or chagned, we'll walk through the new or changed files and look up if the
-    // path exists in the older. If the file is new or changed, but the path exists in older then the
-    // file is changed, otherwise it's new.
+    // Now that we have new or chagned, we'll walk through the new or changed
+    // files and look up if the path exists in the older. If the file is new
+    // or changed, but the path exists in older then the file is changed,
+    // otherwise it's new.
     //
-    // Directionality is from older -> newer So for example if the newer set contains a file that isn't
-    // found in the older. That file will end up in the additions set.
+    // Directionality is from older -> newer So for example if the newer set
+    // contains a file that isn't found in the older. That file will end up
+    // in the additions set.
     pub fn new(older: &HashSet<TreeFile>, newer: &HashSet<TreeFile>) -> Self {
-        // Additions are files in the more recent state that can't be found in the older state
+        // Additions are files in the more recent state that can't be found in
+        // the older state
         let additions: HashSet<TreeFile> =
             newer.difference(older).cloned().collect();
 
-        // Deletions are files in older state that can no longer be found in the older state
+        // Deletions are files in older state that can no longer be found in the
+        // older state
         let deletions: HashSet<TreeFile> =
             older.difference(newer).cloned().collect();
 
@@ -44,7 +49,7 @@ impl TreeDiff {
         }
     }
 
-    pub fn apply(&self, root_path: &Path) -> Result<(), Box<dyn Error>> {
+    pub fn apply(&self, root_path: &Path) -> Result<()> {
         for a in &self.additions {
             let destination = root_path.join(&a.path);
             store::export_to(root_path, &a.file_hash, &destination)?;
@@ -60,10 +65,9 @@ impl TreeDiff {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::error::Error;
 
     #[test]
-    fn test_diff_empty_trees() -> Result<(), Box<dyn Error>> {
+    fn test_diff_empty_trees() -> Result<()> {
         let newer = HashSet::new();
         let older = HashSet::new();
 
@@ -79,7 +83,7 @@ mod tests {
     }
 
     #[test]
-    fn test_diff_newer_simple_addition() -> Result<(), Box<dyn Error>> {
+    fn test_diff_newer_simple_addition() -> Result<()> {
         let file_a = TreeFile {
             path: String::from("path-a"),
             file_hash: String::from("hash-a"),
@@ -104,7 +108,7 @@ mod tests {
     }
 
     #[test]
-    fn test_diff_change_in_a() -> Result<(), Box<dyn Error>> {
+    fn test_diff_change_in_a() -> Result<()> {
         let file_a = TreeFile {
             path: String::from("path-a"),
             file_hash: String::from("hash-a"),

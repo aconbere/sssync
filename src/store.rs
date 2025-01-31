@@ -1,6 +1,7 @@
-use std::error::Error;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+use anyhow::{anyhow, Result};
 
 pub const STORE_DIR: &str = ".sssync";
 pub const OBJECTS_DIR: &str = "objects";
@@ -49,7 +50,7 @@ pub fn export_to(
     root_path: &Path,
     hash: &str,
     destination: &Path,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     // Ensure the directory where we're going to write this file exists
     if let Some(parent) = destination.parent() {
         fs::create_dir_all(parent)?;
@@ -65,11 +66,7 @@ pub fn exists(root_path: &Path, hash: &str) -> bool {
 
 // Writes the contents of the file found at source into the store
 // with the hash hash.
-pub fn insert_from(
-    root_path: &Path,
-    hash: &str,
-    source: &Path,
-) -> Result<(), Box<dyn Error>> {
+pub fn insert_from(root_path: &Path, hash: &str, source: &Path) -> Result<()> {
     let p = object_path(root_path, hash);
 
     if !p.exists() {
@@ -78,17 +75,17 @@ pub fn insert_from(
     Ok(())
 }
 
-pub fn init(path: &Path) -> Result<(), Box<dyn Error>> {
+pub fn init(path: &Path) -> Result<()> {
     if !path.is_dir() {
         return Err(
-            format!("path must be a directory: {}", path.display()).into()
+            anyhow!("path must be a directory: {}", path.display()).into()
         );
     }
 
     let store_path = store_path(path);
 
     if store_path.exists() {
-        return Err(format!(
+        return Err(anyhow!(
             "path {} already contains a {} directory",
             path.display(),
             STORE_DIR

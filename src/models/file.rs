@@ -1,10 +1,10 @@
 use std::collections::HashSet;
-use std::error::Error;
 use std::ffi::CString;
 use std::fs;
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
+use anyhow::Result;
 use errno::errno;
 
 fn default_ignore() -> HashSet<String> {
@@ -20,7 +20,7 @@ fn should_ignore(ignore: &HashSet<String>, path: &Path) -> bool {
     }
 }
 
-pub fn get_all(root: &Path) -> Result<Vec<PathBuf>, Box<dyn Error>> {
+pub fn get_all(root: &Path) -> Result<Vec<PathBuf>> {
     get_all_inner(root, PathBuf::from(""), &default_ignore())
 }
 
@@ -28,7 +28,7 @@ fn get_all_inner(
     root: &Path,
     rel_path: PathBuf,
     ignore: &HashSet<String>,
-) -> Result<Vec<PathBuf>, Box<dyn Error>> {
+) -> Result<Vec<PathBuf>> {
     let mut results: Vec<PathBuf> = Vec::new();
 
     if should_ignore(ignore, &rel_path) {

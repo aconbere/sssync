@@ -1,6 +1,6 @@
-use std::error::Error;
 use std::path::Path;
 
+use anyhow::Result;
 use url::{ParseError, Url};
 
 use crate::types::remote_kind::RemoteKind;
@@ -26,11 +26,7 @@ pub struct Remote {
 }
 
 impl Remote {
-    pub fn new(
-        name: &str,
-        kind: RemoteKind,
-        location: &str,
-    ) -> Result<Self, Box<dyn Error>> {
+    pub fn new(name: &str, kind: RemoteKind, location: &str) -> Result<Self> {
         Ok(Self {
             kind,
             name: name.to_string(),

@@ -1,5 +1,6 @@
-use std::error::Error;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use anyhow::{anyhow, Result};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Commit {
@@ -16,7 +17,7 @@ impl Commit {
         comment: &str,
         author: &str,
         parent_hash: Option<String>,
-    ) -> Result<Commit, Box<dyn Error>> {
+    ) -> Result<Commit> {
         let time = SystemTime::now().duration_since(UNIX_EPOCH)?;
         Ok(Commit {
             parent_hash,
@@ -74,8 +75,8 @@ pub fn get_shared_parent(left: &[Commit], right: &[Commit]) -> Option<Commit> {
     shared_parent
 }
 
-/* Takes a list of ordered commits and returns the tail of that list following a commit who's hash
- * matches "needle".
+/* Takes a list of ordered commits and returns the tail of that list
+ * following a commit who's hash matches "needle".
  */
 pub fn commits_since(haystack: &Vec<Commit>, needle: &Commit) -> Vec<Commit> {
     let mut diff: Vec<Commit> = vec![];
@@ -119,19 +120,20 @@ pub fn diff_commit_list(
 pub fn diff_commit_list_left(
     left: &Vec<Commit>,
     right: &Vec<Commit>,
-) -> Result<Vec<Commit>, Box<dyn Error>> {
+) -> Result<Vec<Commit>> {
     println!("Left: {:?}", left);
     println!("Right: {:?}", right);
     match diff_commit_list(left, right) {
         CompareResult::NoSharedParent => {
-            Err("Remote has no shared parent".into())
+            Err(anyhow!("Remote has no shared parent"))
         }
         CompareResult::Diff { left, right } => {
             if !right.is_empty() {
-                Err("no fast forward, remote has commits not in the current db"
-                    .into())
+                Err(anyhow!(
+                    "no fast forward, remote has commits not in the current db"
+                ))
             } else if left.is_empty() {
-                Err("no differences between remote and local".into())
+                Err(anyhow!("no differences between remote and local"))
             } else {
                 Ok(left)
             }
@@ -144,7 +146,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_get_shared_parent_with_equal_lists() -> Result<(), Box<dyn Error>> {
+    fn test_get_shared_parent_with_equal_lists() -> Result<()> {
         let commit_a = Commit::new("a", "", "", None)?;
         let commit_b = Commit::new("b", "", "", Some(String::from("a")))?;
 
@@ -157,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_shared_parent_with_left_longer() -> Result<(), Box<dyn Error>> {
+    fn test_get_shared_parent_with_left_longer() -> Result<()> {
         let commit_a = Commit::new("a", "", "", None)?;
         let commit_b = Commit::new("b", "", "", Some(String::from("a")))?;
         let commit_c = Commit::new("c", "", "", Some(String::from("b")))?;
@@ -171,8 +173,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_shared_parent_with_right_longer() -> Result<(), Box<dyn Error>>
-    {
+    fn test_get_shared_parent_with_right_longer() -> Result<()> {
         let commit_a = Commit::new("a", "", "", None)?;
         let commit_b = Commit::new("b", "", "", Some(String::from("a")))?;
         let commit_c = Commit::new("c", "", "", Some(String::from("b")))?;
@@ -186,7 +187,7 @@ mod tests {
     }
 
     #[test]
-    fn test_diff_commit_list_right_longer() -> Result<(), Box<dyn Error>> {
+    fn test_diff_commit_list_right_longer() -> Result<()> {
         let commit_a = Commit::new("a", "", "", None)?;
         let commit_b = Commit::new("b", "", "", Some(String::from("a")))?;
 
@@ -201,12 +202,12 @@ mod tests {
                 assert_eq!(right_diff, vec!(commit_b));
                 Ok(())
             }
-            CompareResult::NoSharedParent => Err("should be a diff".into()),
+            CompareResult::NoSharedParent => Err(anyhow!("should be a diff")),
         }
     }
 
     #[test]
-    fn test_diff_commit_list_left_longer() -> Result<(), Box<dyn Error>> {
+    fn test_diff_commit_list_left_longer() -> Result<()> {
         let commit_a = Commit::new("a", "", "", None)?;
         let commit_b = Commit::new("b", "", "", Some(String::from("a")))?;
 
@@ -221,7 +222,7 @@ mod tests {
                 assert_eq!(left_diff, vec!(commit_b));
                 Ok(())
             }
-            CompareResult::NoSharedParent => Err("should be a diff".into()),
+            CompareResult::NoSharedParent => Err(anyhow!("should be a diff")),
         }
     }
 }

@@ -1,5 +1,4 @@
-use std::error::Error;
-
+use anyhow::Result;
 use rusqlite;
 use rusqlite::params;
 use rusqlite::Connection;
@@ -7,7 +6,7 @@ use rusqlite::OptionalExtension;
 
 use crate::models::commit::Commit;
 
-pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
+pub fn create_table(connection: &Connection) -> Result<()> {
     connection.execute(
         "
         CREATE TABLE
@@ -24,10 +23,7 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn insert(
-    connection: &Connection,
-    commit: &Commit,
-) -> Result<(), Box<dyn Error>> {
+pub fn insert(connection: &Connection, commit: &Commit) -> Result<()> {
     connection.execute(
         "
         INSERT OR IGNORE INTO
@@ -155,8 +151,8 @@ pub fn get_children(
 pub fn get_by_ref_name(
     connection: &Connection,
     ref_name: &str,
-) -> Result<Option<Commit>, rusqlite::Error> {
-    connection
+) -> Result<Option<Commit>> {
+    let result = connection
         .query_row(
             "
         SELECT
@@ -181,5 +177,7 @@ pub fn get_by_ref_name(
                 })
             },
         )
-        .optional()
+        .optional()?;
+
+    Ok(result)
 }

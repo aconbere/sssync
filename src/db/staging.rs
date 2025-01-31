@@ -1,11 +1,12 @@
 use rusqlite::params;
 use rusqlite::Connection;
-use std::error::Error;
 use std::path::PathBuf;
+
+use anyhow::Result;
 
 use crate::models::staged_file::{Change, ChangeKind, StagedFile};
 
-pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
+pub fn create_table(connection: &Connection) -> Result<()> {
     connection.execute(
         "
         CREATE TABLE
@@ -23,10 +24,7 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn insert(
-    connection: &Connection,
-    change: &Change,
-) -> Result<(), Box<dyn Error>> {
+pub fn insert(connection: &Connection, change: &Change) -> Result<()> {
     let params = match change {
         Change::Addition(sf) => (
             sf.path.as_str(),
@@ -66,7 +64,7 @@ pub fn insert(
     Ok(())
 }
 
-pub fn get_all(connection: &Connection) -> Result<Vec<Change>, Box<dyn Error>> {
+pub fn get_all(connection: &Connection) -> Result<Vec<Change>> {
     let mut stmt = connection.prepare(
         "
             SELECT
@@ -99,7 +97,7 @@ pub fn get_all(connection: &Connection) -> Result<Vec<Change>, Box<dyn Error>> {
     Ok(entries)
 }
 
-pub fn delete(connection: &Connection) -> Result<(), Box<dyn Error>> {
+pub fn delete(connection: &Connection) -> Result<()> {
     connection.execute(
         "
             DELETE FROM staging

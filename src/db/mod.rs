@@ -1,9 +1,9 @@
 use rusqlite::Connection;
-use std::error::Error;
 use std::path::{Path, PathBuf};
 
 use crate::models::meta::Meta;
 use crate::store;
+use anyhow::Result;
 
 pub mod commit;
 pub mod meta;
@@ -25,7 +25,7 @@ pub fn repo_db_path(root_path: &Path) -> PathBuf {
     db_path(&store_path)
 }
 
-pub fn init(connection: &Connection) -> Result<(), Box<dyn Error>> {
+pub fn init(connection: &Connection) -> Result<()> {
     commit::create_table(connection)?;
     meta::create_table(connection)?;
     migration::create_table(connection)?;

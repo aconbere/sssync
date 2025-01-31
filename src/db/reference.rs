@@ -1,12 +1,11 @@
-use std::error::Error;
-
+use anyhow::Result;
 use rusqlite;
 use rusqlite::params;
 use rusqlite::Connection;
 
 use crate::models::reference::{Kind, Reference, LOCAL};
 
-pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
+pub fn create_table(connection: &Connection) -> Result<()> {
     connection.execute(
         "
         CREATE TABLE
@@ -29,7 +28,7 @@ pub fn insert(
     kind: Kind,
     hash: &str,
     remote: Option<&str>,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     connection.execute(
         "
         INSERT INTO
@@ -48,7 +47,7 @@ pub fn update(
     kind: Kind,
     hash: &str,
     remote: Option<&str>,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     connection.execute(
         "
         INSERT INTO

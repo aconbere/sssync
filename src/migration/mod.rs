@@ -1,7 +1,7 @@
-use std::error::Error;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
+use anyhow::{anyhow, Result};
 use rusqlite::Connection;
 use url::Url;
 
@@ -17,7 +17,7 @@ pub fn create(
     kind: TransferKind,
     remote_name: &str,
     object_hashes: &[String],
-) -> Result<Migration, Box<dyn Error>> {
+) -> Result<Migration> {
     let remote = db::remote::get(connection, remote_name)?;
 
     let migration = Migration::new(kind.clone(), &remote);
@@ -41,7 +41,7 @@ pub async fn run(
     migration: &Migration,
     force: bool,
     ignore_existing: bool,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     match migration.kind {
         TransferKind::Upload => {
             run_upload(connection, root_path, migration, force, ignore_existing)
@@ -70,7 +70,7 @@ async fn run_upload(
     migration: &Migration,
     force: bool,
     ignore_existing: bool,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     let uploads =
         db::transfer::get_waiting_for_migration(connection, &migration.id)?;
 
@@ -132,7 +132,7 @@ pub async fn run_download(
     migration: &Migration,
     force: bool,
     ignore_existing: bool,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     let downloads =
         db::transfer::get_waiting_for_migration(connection, &migration.id)?;
 
@@ -174,7 +174,7 @@ pub async fn run_download(
                 continue;
             }
             if !force {
-                return Err(format!("File already found: {}, set `force` to override or ignore_existing to ignore", &download.object_hash).into());
+                return Err(anyhow!("File already found: {}, set `force` to override or ignore_existing to ignore", &download.object_hash));
             }
         }
 

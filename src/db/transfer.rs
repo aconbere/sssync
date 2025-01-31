@@ -1,11 +1,10 @@
-use std::error::Error;
-
+use anyhow::Result;
 use rusqlite::params;
 use rusqlite::Connection;
 
 use crate::models::transfer::{Transfer, TransferState};
 
-pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
+pub fn create_table(connection: &Connection) -> Result<()> {
     connection.execute(
         "
         CREATE TABLE
@@ -21,10 +20,7 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn insert(
-    connection: &Connection,
-    transfer: &Transfer,
-) -> Result<(), Box<dyn Error>> {
+pub fn insert(connection: &Connection, transfer: &Transfer) -> Result<()> {
     connection.execute(
         "
         INSERT INTO
@@ -116,7 +112,7 @@ pub fn set_state(
     connection: &Connection,
     transfer: &Transfer,
     state: TransferState,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     connection.execute(
         "
         UPDATE

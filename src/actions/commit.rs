@@ -1,7 +1,8 @@
 use rusqlite::Connection;
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::{Path, PathBuf};
+
+use anyhow::{anyhow, Result};
 
 use crate::db;
 use crate::models::commit::Commit;
@@ -12,13 +13,10 @@ use crate::models::status::{
 };
 use crate::store;
 
-pub fn commit(
-    connection: &Connection,
-    root_path: &Path,
-) -> Result<(), Box<dyn Error>> {
+pub fn commit(connection: &Connection, root_path: &Path) -> Result<()> {
     let staged_files = db::staging::get_all(connection)?;
     if staged_files.is_empty() {
-        return Err("Staging is empty: Nothing to commit".into());
+        return Err(anyhow!("Staging is empty: Nothing to commit"));
     }
 
     let status = Status::new(connection, root_path)?;
@@ -26,16 +24,17 @@ pub fn commit(
 
     let staged_changes = db::staging::get_all(connection)?;
 
-    // This map will end up collecting together both the tracked set of files as well as the staged
-    // files. Then we can add or remove files by path as we work through staged additions and
-    // deletions.
+    // This map will end up collecting together both the tracked set of files as
+    // well as the staged files. Then we can add or remove files by path as
+    // we work through staged additions and deletions.
     //
-    // IntermediatTree is just an enum that let's us work on top of two types of files with
-    // slightly different data. (Note: I should put these all together to make them easier to work
-    // on)
+    // IntermediatTree is just an enum that let's us work on top of two types of
+    // files with slightly different data. (Note: I should put these all
+    // together to make them easier to work on)
     //
-    // NOTE! These tree files will have the commit hash of the parent commit They need to have that
-    // updated before saving them or they will point to the wrong commit.
+    // NOTE! These tree files will have the commit hash of the parent commit
+    // They need to have that updated before saving them or they will point
+    // to the wrong commit.
     let mut new_tree: HashMap<PathBuf, IntermediateTree> = status
         .tracked_files
         .iter()

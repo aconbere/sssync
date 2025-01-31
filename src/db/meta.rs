@@ -1,11 +1,10 @@
-use std::error::Error;
-
+use anyhow::Result;
 use rusqlite::params;
 use rusqlite::Connection;
 
 use crate::models::meta::Meta;
 
-pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
+pub fn create_table(connection: &Connection) -> Result<()> {
     println!("meta::create_table");
     connection.execute(
         "
@@ -20,10 +19,7 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn update(
-    connection: &Connection,
-    meta: &Meta,
-) -> Result<(), Box<dyn Error>> {
+pub fn update(connection: &Connection, meta: &Meta) -> Result<()> {
     println!("meta::update");
     connection.execute(
         "

@@ -1,12 +1,11 @@
-use std::error::Error;
-
+use anyhow::Result;
 use rusqlite::params;
 use rusqlite::Connection;
 
 use crate::models::remote::Remote;
 use crate::types::remote_kind::RemoteKind;
 
-pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
+pub fn create_table(connection: &Connection) -> Result<()> {
     connection.execute(
         "
         CREATE TABLE
@@ -21,10 +20,7 @@ pub fn create_table(connection: &Connection) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub fn insert(
-    connection: &Connection,
-    remote: &Remote,
-) -> Result<(), Box<dyn Error>> {
+pub fn insert(connection: &Connection, remote: &Remote) -> Result<()> {
     connection.execute(
         "
         INSERT INTO remotes (name, kind, location)
@@ -41,7 +37,7 @@ struct IntermediateRemote {
     location: String,
 }
 
-pub fn get_all(connection: &Connection) -> Result<Vec<Remote>, Box<dyn Error>> {
+pub fn get_all(connection: &Connection) -> Result<Vec<Remote>> {
     let inter = get_all_intermediate(connection)?;
     inter
         .iter()
@@ -74,10 +70,7 @@ fn get_all_intermediate(
         .collect()
 }
 
-pub fn get(
-    connection: &Connection,
-    name: &str,
-) -> Result<Remote, Box<dyn Error>> {
+pub fn get(connection: &Connection, name: &str) -> Result<Remote> {
     let inter = get_intermediate(connection, name)?;
     Remote::new(&inter.name, inter.kind, &inter.location)
 }

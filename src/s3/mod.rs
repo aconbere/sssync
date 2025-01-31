@@ -20,7 +20,7 @@ pub async fn download_object(
     bucket_name: &str,
     key: &str,
     writer: &mut dyn io::Write,
-) -> Result<ByteStream, Box<dyn std::error::Error>> {
+) -> Result<ByteStream> {
     let mut resp = client
         .get_object()
         .bucket(bucket_name)

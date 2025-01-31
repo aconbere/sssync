@@ -1,9 +1,9 @@
-use std::error::Error;
 use std::fs::File;
 use std::io;
 use std::io::Write;
 use std::path::Path;
 
+use anyhow::Result;
 use xxhash_rust::xxh3::{xxh3_128, Xxh3};
 
 #[allow(clippy::needless_range_loop)]
@@ -40,7 +40,7 @@ impl Write for Xxh3Writer {
     }
 }
 
-pub fn hash_file(path: &Path) -> Result<String, Box<dyn Error>> {
+pub fn hash_file(path: &Path) -> Result<String> {
     let mut hasher = Xxh3Writer::new();
     let mut file = File::open(&path)?;
     io::copy(&mut file, &mut hasher)?;

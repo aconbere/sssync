@@ -1,6 +1,6 @@
-use std::error::Error;
 use std::path::Path;
 
+use anyhow::Result;
 use rusqlite::Connection;
 
 use crate::db;
@@ -12,7 +12,7 @@ pub fn add(
     connection: &Connection,
     root_path: &Path,
     rel_path: &Path,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     let status = Status::new(connection, root_path)?;
 
     for ua in status.unstaged_additions {

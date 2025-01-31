@@ -1,9 +1,9 @@
 use std::fmt;
 
 use std::collections::{HashMap, HashSet};
-use std::error::Error;
 use std::path::{Path, PathBuf};
 
+use anyhow::Result;
 use rusqlite::Connection;
 
 use crate::db;
@@ -14,9 +14,10 @@ use crate::models::tree_file::TreeFile;
 
 use crate::hash::hash_string;
 
-/* Status is a struct that contains derived information about the current repository. It's the
- * struct that is responsible for printing the "status" command, but it's also used in a number of
- * places where knowing things like unstaged changes is useful.
+/* Status is a struct that contains derived information about the current
+ * repository. It's the struct that is responsible for printing the "status"
+ * command, but it's also used in a number of places where knowing things
+ * like unstaged changes is useful.
  */
 pub struct Status {
     /* The set of files tracked at HEAD
@@ -24,25 +25,27 @@ pub struct Status {
     pub tracked_files: HashMap<PathBuf, TreeFile>,
     /* Staged changes can be either additions or deletions:
      *
-     * For ease of use later we'll move them into hash sets for both additions and deletions.
+     * For ease of use later we'll move them into hash sets for both
+     * additions and deletions.
      */
     pub staged_additions: HashSet<PathBuf>,
     pub staged_deletions: HashSet<PathBuf>,
 
-    /* A staged addition could potentially have changed or been deleted since it's addition to
-     * the index. Conversely a staged deletion could have the file appear again.
+    /* A staged addition could potentially have changed or been deleted
+     * since it's addition to the index. Conversely a staged deletion
+     * could have the file appear again.
      */
     pub staged_but_changed: HashSet<PathBuf>,
     pub staged_but_deleted: HashSet<PathBuf>,
     pub staged_but_added: HashSet<PathBuf>,
 
-    /* Unstaged additions are files on disk that are neither in the set of staged additions
-     * nor in the set of tracked files.
+    /* Unstaged additions are files on disk that are neither in the set of
+     * staged additions nor in the set of tracked files.
      */
     pub unstaged_additions: Vec<PathBuf>,
 
-    /* Unstaged deletions are files deleted from disk that are in the set of tracked files, but
-     * not in the set of staged deletions.
+    /* Unstaged deletions are files deleted from disk that are in the set of
+     * tracked files, but not in the set of staged deletions.
      */
     pub unstaged_deletions: Vec<PathBuf>,
 
@@ -104,13 +107,11 @@ impl Status {
      *  - The state of the index
      *  - The state of the filesystem
      *
-     *  It does this by building up a set of each of these files (TreeFiles), and comparing
-     *  the sets to produce a human readable string outpute.
+     *  It does this by building up a set of each of these files (TreeFiles),
+     * and comparing  the sets to produce a human readable string
+     * outpute.
      */
-    pub fn new(
-        connection: &Connection,
-        root_path: &Path,
-    ) -> Result<Status, Box<dyn Error>> {
+    pub fn new(connection: &Connection, root_path: &Path) -> Result<Status> {
         let meta = db::meta::get(connection)?;
         let head = db::commit::get_by_ref_name(connection, &meta.head)?;
 
@@ -130,26 +131,28 @@ impl Status {
 
         /* Staged changes can be either additions or deletions:
          *
-         * For ease of use later we'll move them into hash sets for both additions and deletions.
+         * For ease of use later we'll move them into hash sets for both
+         * additions and deletions.
          */
         let staged_changes = db::staging::get_all(connection)?;
         let mut staged_additions: HashSet<PathBuf> = HashSet::new();
         let mut staged_deletions: HashSet<PathBuf> = HashSet::new();
 
-        /* A staged addition could potentially have changed or been deleted since it's addition to
-         * the index. Conversely a staged deletion could have the file appear again.
+        /* A staged addition could potentially have changed or been deleted
+         * since it's addition to the index. Conversely a staged
+         * deletion could have the file appear again.
          */
         let mut staged_but_changed: HashSet<PathBuf> = HashSet::new();
         let mut staged_but_deleted: HashSet<PathBuf> = HashSet::new();
         let mut staged_but_added: HashSet<PathBuf> = HashSet::new();
 
-        /* Unstaged additions are files on disk that are neither in the set of staged additions
-         * nor in the set of tracked files.
+        /* Unstaged additions are files on disk that are neither in the set
+         * of staged additions nor in the set of tracked files.
          */
         let mut unstaged_additions: Vec<PathBuf> = Vec::new();
 
-        /* Unstaged deletions are files deleted from disk that are in the set of tracked files, but
-         * not in the set of staged deletions.
+        /* Unstaged deletions are files deleted from disk that are in the set
+         * of tracked files, but not in the set of staged deletions.
          */
         let mut unstaged_deletions: Vec<PathBuf> = Vec::new();
 

@@ -1,6 +1,6 @@
-use std::error::Error;
 use std::path::Path;
 
+use anyhow::{anyhow, Result};
 use rusqlite::Connection;
 use url::Url;
 
@@ -21,16 +21,13 @@ pub fn add(
     name: &str,
     kind: &RemoteKind,
     location: &str,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     let remote = Remote::new(name, *kind, location)?;
     db::remote::insert(connection, &remote)
 }
 
 // Remote a remote from the repository
-pub fn remove(
-    connection: &Connection,
-    name: &str,
-) -> Result<(), Box<dyn Error>> {
+pub fn remove(connection: &Connection, name: &str) -> Result<()> {
     db::remote::delete(connection, name).map_err(|e| e.into())
 }
 
@@ -39,7 +36,7 @@ pub fn locate(
     connection: &Connection,
     remote_name: &str,
     path: &Path,
-) -> Result<Url, Box<dyn Error>> {
+) -> Result<Url> {
     let remote = db::remote::get(connection, remote_name)?;
     let tree_file = db::tree::get_by_path(connection, path)?;
     let url =
@@ -49,7 +46,7 @@ pub fn locate(
 }
 
 // List the remotes in the repository
-pub fn list(connection: &Connection) -> Result<(), Box<dyn Error>> {
+pub fn list(connection: &Connection) -> Result<()> {
     let remotes = db::remote::get_all(connection)?;
 
     for remote in remotes {
@@ -61,24 +58,25 @@ pub fn list(connection: &Connection) -> Result<(), Box<dyn Error>> {
 
 /* Initialize the remote
  *
- * Because sssync doesn't run a remote daemon nor expect remote ssh access it might need to
- * coordinate the set up of the remote. As an example if the ssync backend is s3 ssync might need
- * to setup the bucket and push up an initial database.
+ * Because sssync doesn't run a remote daemon nor expect remote ssh access it
+ * might need to coordinate the set up of the remote. As an example if the
+ * ssync backend is s3 ssync might need to setup the bucket and push up an
+ * initial database.
  *
- * If the given remote url is already a sssync repository (contains a .sssync.db) then
- * this function will exit with Ok skipping any mutations. Pass `true` to `force`
- * in order to overwrite the existing repository.
+ * If the given remote url is already a sssync repository (contains a
+ * .sssync.db) then this function will exit with Ok skipping any mutations.
+ * Pass `true` to `force` in order to overwrite the existing repository.
  */
 pub async fn init(
     connection: &Connection,
     root_path: &Path,
     remote_name: &str,
     force: bool,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     let remote = db::remote::get(connection, remote_name)?;
     let meta = db::meta::get(connection)?;
     let head = db::commit::get_by_ref_name(connection, &meta.head)?
-        .ok_or("No commit")?;
+        .ok_or(anyhow!("No commit"))?;
 
     match remote.kind {
         RemoteKind::S3 => {
@@ -141,11 +139,11 @@ pub async fn push(
     connection: &Connection,
     root_path: &Path,
     remote_name: &str,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     let remote = db::remote::get(connection, remote_name)?;
     let meta = db::meta::get(connection)?;
     let head = db::commit::get_by_ref_name(connection, &meta.head)?
-        .ok_or("No commit")?;
+        .ok_or(anyhow!("No commit"))?;
 
     match remote.kind {
         RemoteKind::S3 => {
@@ -167,10 +165,10 @@ pub async fn push(
             let remote_connection = Connection::open(&remote_db)?;
             let remote_head =
                 db::commit::get_by_ref_name(&remote_connection, &meta.head)?
-                    .ok_or("No remote commit")?;
+                    .ok_or(anyhow!("No remote commit"))?;
 
             if remote_head.hash == head.hash {
-                return Err("no differences between remote and local".into());
+                return Err(anyhow!("no differences between remote and local"));
             }
 
             let commits = db::commit::get_children(connection, &head.hash)?;
@@ -238,15 +236,16 @@ pub async fn push(
 
 /* Pull down the remote database
  *
- * This will not fetch down remote objects. Bceause a goal of sssync is to minimize transfer costs
- * its useful to have a distinction between getting the latest remote state (fetch) and getting the
- * relevant remote objects (undefined as of yet).
+ * This will not fetch down remote objects. Bceause a goal of sssync is to
+ * minimize transfer costs its useful to have a distinction between getting
+ * the latest remote state (fetch) and getting the relevant remote objects
+ * (undefined as of yet).
  */
 pub async fn fetch_remote_database(
     connection: &Connection,
     root_path: &Path,
     remote_name: &str,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     let remote = db::remote::get(connection, remote_name)?;
 
     match remote.kind {
@@ -292,15 +291,15 @@ pub async fn fetch_remote_database(
     }
 }
 
-/* Push up a copy of the remote database. This probably shouldn't be used, but it allows me to
- * easily fix up a remote db.
+/* Push up a copy of the remote database. This probably shouldn't be used,
+ * but it allows me to easily fix up a remote db.
  */
 pub async fn push_remote_database(
     connection: &Connection,
     root_path: &Path,
     remote_name: &str,
     force: bool,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     let remote = db::remote::get(connection, remote_name)?;
 
     match remote.kind {

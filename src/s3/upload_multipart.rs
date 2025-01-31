@@ -1,10 +1,10 @@
-use std::error::Error;
 use std::fs::File;
 use std::io::stdout;
 use std::io::Read;
 use std::io::Write;
 use std::path::Path;
 
+use anyhow::{anyhow, Result};
 use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::types::{CompletedMultipartUpload, CompletedPart};
 use aws_sdk_s3::Client;
@@ -20,14 +20,14 @@ pub async fn upload_multipart(
     key_path: &Path,
     file_path: &Path,
     force: bool,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     let key = key_path.to_str().unwrap();
 
     if !force {
         let head_object_res =
             client.head_object().bucket(bucket).key(key).send().await;
         if head_object_res.is_ok() {
-            return Err("Skipping upload: File already exists.".into());
+            return Err(anyhow!("Skipping upload: File already exists."));
         }
     }
 
@@ -95,7 +95,7 @@ async fn run(
     bucket: &str,
     key: &str,
     reader: &mut dyn Read,
-) -> Result<Vec<CompletedPart>, Box<dyn Error>> {
+) -> Result<Vec<CompletedPart>> {
     let mut part_number = 1;
 
     let mut upload_parts: Vec<CompletedPart> = Vec::new();
