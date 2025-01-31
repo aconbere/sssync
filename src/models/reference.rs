@@ -13,6 +13,7 @@ pub struct Reference {
     pub name: String,
     pub kind: Kind,
     pub hash: String,
+    #[allow(dead_code)]
     pub remote: Option<String>,
 }
 

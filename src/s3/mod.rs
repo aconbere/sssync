@@ -1,19 +1,17 @@
 use std::io;
 
-use aws_config::meta::region::RegionProviderChain;
-use aws_sdk_s3::model::{Delete, ObjectIdentifier};
-use aws_sdk_s3::output::ListObjectsV2Output;
-use aws_sdk_s3::types::ByteStream;
-use aws_sdk_s3::{Client, Error};
-use tokio_stream::StreamExt;
+use anyhow::{anyhow, Result};
+use aws_sdk_s3::operation::list_objects_v2::ListObjectsV2Output;
+use aws_sdk_s3::primitives::ByteStream;
+use aws_sdk_s3::types::{Delete, ObjectIdentifier};
+use aws_sdk_s3::Client;
 
 pub mod upload;
 pub mod upload_multipart;
 
 pub async fn make_client() -> Client {
-    let region_provider =
-        RegionProviderChain::default_provider().or_else("us-west-2");
-    let config = aws_config::from_env().region(region_provider).load().await;
+    let config =
+        aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
     Client::new(&config)
 }
 
@@ -38,45 +36,55 @@ pub async fn download_object(
 }
 
 #[allow(dead_code)]
-pub async fn list_objects(
-    client: &Client,
-    bucket_name: &str,
-) -> Result<(), Error> {
+pub async fn list_objects(client: &Client, bucket_name: &str) -> Result<()> {
     let objects = client.list_objects_v2().bucket(bucket_name).send().await?;
-    for obj in objects.contents().unwrap_or_default() {
-        println!("{:?}", obj.key().unwrap());
-    }
 
+    if let Some(objects) = objects.contents {
+        for obj in objects {
+            println!("{:?}", obj.key().unwrap());
+        }
+    } else {
+        println!("No objects found for bucket: {}", bucket_name)
+    }
     Ok(())
 }
 
 #[allow(dead_code)]
-pub async fn delete_objects(
-    client: &Client,
-    bucket_name: &str,
-) -> Result<(), Error> {
+pub async fn delete_objects(client: &Client, bucket_name: &str) -> Result<()> {
     let objects = client.list_objects_v2().bucket(bucket_name).send().await?;
 
     let mut delete_objects: Vec<ObjectIdentifier> = vec![];
-    for obj in objects.contents().unwrap_or_default() {
-        let obj_id = ObjectIdentifier::builder()
-            .set_key(Some(obj.key().unwrap().to_string()))
-            .build();
-        delete_objects.push(obj_id);
-    }
-    client
-        .delete_objects()
-        .bucket(bucket_name)
-        .delete(Delete::builder().set_objects(Some(delete_objects)).build())
-        .send()
-        .await?;
 
-    let objects: ListObjectsV2Output =
-        client.list_objects_v2().bucket(bucket_name).send().await?;
-    match objects.key_count {
-        0 => Ok(()),
-        _ => Err(Error::Unhandled(Box::from(
-            "There were still objects left in the bucket.",
-        ))),
+    if let Some(objects) = objects.contents {
+        for obj in objects {
+            let obj_id = ObjectIdentifier::builder()
+                .set_key(Some(obj.key().unwrap().to_string()))
+                .build()?;
+            delete_objects.push(obj_id);
+        }
+
+        client
+            .delete_objects()
+            .bucket(bucket_name)
+            .delete(
+                Delete::builder()
+                    .set_objects(Some(delete_objects))
+                    .build()?,
+            )
+            .send()
+            .await?;
+
+        let objects: ListObjectsV2Output =
+            client.list_objects_v2().bucket(bucket_name).send().await?;
+
+        match objects.key_count {
+            Some(0) => Ok(()),
+            None => {
+                Err(anyhow!("No objects found for bucket: {}", bucket_name))
+            }
+            _ => Err(anyhow!("There were still objects left in the bucket.")),
+        }
+    } else {
+        Err(anyhow!("No objects found for bucket: {}", bucket_name))
     }
 }

@@ -5,8 +5,8 @@ use std::io::Read;
 use std::io::Write;
 use std::path::Path;
 
-use aws_sdk_s3::model::{CompletedMultipartUpload, CompletedPart};
-use aws_sdk_s3::types::ByteStream;
+use aws_sdk_s3::primitives::ByteStream;
+use aws_sdk_s3::types::{CompletedMultipartUpload, CompletedPart};
 use aws_sdk_s3::Client;
 
 use crate::s3::upload::upload_object;
