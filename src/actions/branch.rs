@@ -45,11 +45,12 @@ pub fn switch(
 
     let reference = db::reference::get(connection, None, name)?;
     let commit = db::commit::get(connection, &reference.hash)?;
-    let future_tree = db::tree::get(connection, &commit.hash)?;
     let meta = db::meta::get(connection)?;
     let head = db::commit::get_by_ref_name(connection, &meta.head)?
         .ok_or(anyhow!("Head is bad - no matching ref name"))?;
+
     let current_tree = db::tree::get(connection, &head.hash)?;
+    let future_tree = db::tree::get(connection, &commit.hash)?;
 
     let diff = TreeDiff::new(&current_tree, &future_tree);
     diff.apply(root_path)?;

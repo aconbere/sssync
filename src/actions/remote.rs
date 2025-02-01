@@ -5,11 +5,14 @@ use rusqlite::Connection;
 use url::Url;
 
 use crate::db;
+use crate::db::tree::diff_all_commits;
+use crate::helpers::{bucket_from_url, strip_leading_slash};
 use crate::models::commit;
 use crate::models::reference;
 use crate::models::remote;
 use crate::models::remote::Remote;
 use crate::models::transfer::TransferKind;
+use crate::models::tree_file::TreeFile;
 use crate::s3::make_client;
 use crate::s3::upload_multipart::upload_multipart;
 use crate::store;
@@ -83,15 +86,18 @@ pub async fn init(
             let client = make_client().await;
             let u = Url::parse(&remote.location)?;
 
-            let bucket = u.host_str().unwrap();
+            let bucket = bucket_from_url(&u)?;
+
             let remote_directory = Path::new(u.path());
             let remote_db_path = remote_directory.join(".sssync/sssync.db");
 
             // check if the remote file exists before running init
             let head_object_res = client
                 .head_object()
-                .bucket(bucket)
-                .key(remote_db_path.to_str().unwrap())
+                .bucket(&bucket)
+                .key(strip_leading_slash(remote_db_path.to_str().ok_or(
+                    anyhow!("unable to unwrap remote_db_path to string"),
+                )?))
                 .send()
                 .await;
 
@@ -122,7 +128,7 @@ pub async fn init(
 
             upload_multipart(
                 &client,
-                bucket,
+                &bucket,
                 &remote_db_path,
                 &local_db_path,
                 force,
@@ -147,14 +153,16 @@ pub async fn push(
 
     match remote.kind {
         RemoteKind::S3 => {
-            let client = make_client().await;
+            let s3_client = make_client().await;
             let u = Url::parse(&remote.location)?;
 
-            let bucket = u.host_str().unwrap();
-            let remote_directory = Path::new(u.path()).join(&remote.name);
+            let bucket = bucket_from_url(&u)?;
+            let remote_directory = Path::new(u.path());
 
+            // database isn't right remotely so this updates with the
+            // bad copy.
             let remote_db = crate::remote::fetch_remote_database(
-                &client,
+                &s3_client,
                 root_path,
                 remote.kind,
                 &remote.name,
@@ -166,31 +174,41 @@ pub async fn push(
             let remote_head =
                 db::commit::get_by_ref_name(&remote_connection, &meta.head)?
                     .ok_or(anyhow!("No remote commit"))?;
+            println!(
+                "Updating {} from {} to {}...",
+                remote_name, remote_head.hash, head.hash
+            );
 
             if remote_head.hash == head.hash {
-                return Err(anyhow!("no differences between remote and local"));
+                return Err(anyhow!("Remote is already at: {}", head.hash));
             }
 
-            let commits = db::commit::get_children(connection, &head.hash)?;
+            // figure out what commits are different
+            let local_commits =
+                db::commit::get_children(connection, &head.hash)?;
+
             let remote_commits = db::commit::get_children(
                 &remote_connection,
                 &remote_head.hash,
             )?;
 
             let ff_commits =
-                commit::diff_commit_list_left(&commits, &remote_commits)?;
-            println!("ff commits: {:?}", ff_commits);
-            let additions = db::tree::additions(connection, &ff_commits)?;
+                commit::diff_commit_list_left(&local_commits, &remote_commits)?;
 
-            let hashes: Vec<String> =
-                additions.iter().map(|d| d.file_hash.to_string()).collect();
-            println!("found count hashes: {}", hashes.len());
+            // figure out what files to upload
+            let diff = diff_all_commits(&connection, &ff_commits)?;
+
+            let mut updated_files: Vec<TreeFile> = diff.additions.clone();
+            updated_files.extend(diff.changes.clone());
+
+            let to_upload_hashes: Vec<String> =
+                updated_files.iter().map(|f| f.file_hash.clone()).collect();
 
             let migration = crate::migration::create(
                 connection,
                 TransferKind::Upload,
                 &remote.name,
-                &hashes,
+                &to_upload_hashes,
             )?;
 
             println!("Running Migration");
@@ -199,12 +217,9 @@ pub async fn push(
             )
             .await?;
 
-            println!("Updating remote db",);
-            println!("Adding commits");
             for commit in ff_commits {
                 db::commit::insert(&remote_connection, &commit)?;
             }
-            println!("Updating HEAD: {} {}", &meta.head, &head.hash);
             db::reference::update(
                 &remote_connection,
                 &meta.head,
@@ -212,21 +227,18 @@ pub async fn push(
                 &head.hash,
                 None,
             )?;
-
-            println!(
-                "Uploading database from {} to {}",
-                &remote_directory.display(),
-                root_path.display()
-            );
+            remote_connection.close().unwrap();
 
             upload_multipart(
-                &client,
-                bucket,
+                &s3_client,
+                &bucket,
                 &remote_directory.join(".sssync/sssync.db"),
-                &root_path.join(".sssync/sssync.db"),
+                &store::remote_db_path(root_path, remote_name),
                 true,
             )
             .await?;
+
+            println!("done uploading");
 
             Ok(())
         }
@@ -263,6 +275,7 @@ pub async fn fetch_remote_database(
 
             let remote_connection = Connection::open(remote_path)?;
 
+            // Upate the local database with the state of the remote database
             println!("Adding commits");
             let remote_commits = db::commit::get_all(&remote_connection)?;
             for commit in remote_commits {
@@ -309,7 +322,7 @@ pub async fn push_remote_database(
             let local_db_path = store::remote_db_path(root_path, remote_name);
 
             let u = Url::parse(&remote.location)?;
-            let bucket = u.host_str().unwrap();
+            let bucket = bucket_from_url(&u)?;
             let remote_directory = Path::new(u.path());
             let remote_db_path = remote_directory.join(".sssync/sssync.db");
 
@@ -321,7 +334,7 @@ pub async fn push_remote_database(
 
             upload_multipart(
                 &client,
-                bucket,
+                &bucket,
                 &remote_db_path,
                 &local_db_path,
                 force,

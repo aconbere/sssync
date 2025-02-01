@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use rusqlite::Connection;
 
 use crate::db;
-use crate::tree::TreeDiff;
+use crate::db::tree::diff_commits;
 
 pub fn diff(connection: &Connection, hash: &str) -> Result<()> {
     let staged_files = db::staging::get_all(connection)?;
@@ -15,12 +15,18 @@ pub fn diff(connection: &Connection, hash: &str) -> Result<()> {
     let head = db::commit::get_by_ref_name(connection, &meta.head)?
         .ok_or(anyhow!("Head is bad - no matching ref name"))?;
 
-    let current_tree = db::tree::get(connection, &head.hash)?;
-    let new_tree = db::tree::get(connection, hash)?;
-    let diff = TreeDiff::new(&current_tree, &new_tree);
+    let diff = diff_commits(&connection, &head.hash, hash)?;
 
     for f in diff.additions {
-        println!("Diff: {}", f.path)
+        println!("Added: {}", f.path)
+    }
+
+    for f in diff.changes {
+        println!("changed: {}", f.path)
+    }
+
+    for f in diff.deletions {
+        println!("Removed: {}", f.path)
     }
 
     Ok(())

@@ -9,6 +9,7 @@ use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::types::{CompletedMultipartUpload, CompletedPart};
 use aws_sdk_s3::Client;
 
+use crate::helpers::strip_leading_slash;
 use crate::s3::upload::upload_object;
 
 const TEN_MEGABYTES: u64 = 10_000_000;
@@ -21,11 +22,11 @@ pub async fn upload_multipart(
     file_path: &Path,
     force: bool,
 ) -> Result<()> {
-    let key = key_path.to_str().unwrap();
+    let key = strip_leading_slash(key_path.to_str().unwrap());
 
     if !force {
         let head_object_res =
-            client.head_object().bucket(bucket).key(key).send().await;
+            client.head_object().bucket(bucket).key(&key).send().await;
         if head_object_res.is_ok() {
             return Err(anyhow!("Skipping upload: File already exists."));
         }
@@ -39,15 +40,14 @@ pub async fn upload_multipart(
     // less than 5Mb, if we catch this case, just do
     // a simple file upload
     if file_metadata.len() < FIVE_MEGABYTES {
-        return upload_object(client, bucket, key_path, file_path)
-            .await
-            .map_err(|e| e.into());
+        let res = upload_object(client, bucket, key_path, file_path).await?;
+        return Ok(res);
     }
 
     let multipart = client
         .create_multipart_upload()
         .bucket(bucket)
-        .key(key)
+        .key(&key)
         .send()
         .await?;
 
@@ -55,7 +55,7 @@ pub async fn upload_multipart(
         .upload_id
         .unwrap_or_else(|| String::from("no upload id"));
 
-    let result = run(client, &upload_id, bucket, key, &mut file).await;
+    let result = run(client, &upload_id, bucket, &key, &mut file).await;
 
     match result {
         Err(e) => {

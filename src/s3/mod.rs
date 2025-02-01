@@ -1,4 +1,5 @@
 use std::io;
+use std::path::Path;
 
 use anyhow::{anyhow, Result};
 use aws_sdk_s3::operation::list_objects_v2::ListObjectsV2Output;
@@ -9,6 +10,8 @@ use aws_sdk_s3::Client;
 pub mod upload;
 pub mod upload_multipart;
 
+use crate::helpers::strip_leading_slash;
+
 pub async fn make_client() -> Client {
     let config =
         aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
@@ -18,9 +21,12 @@ pub async fn make_client() -> Client {
 pub async fn download_object(
     client: &Client,
     bucket_name: &str,
-    key: &str,
+    key_path: &Path,
     writer: &mut dyn io::Write,
 ) -> Result<ByteStream> {
+    let key = strip_leading_slash(key_path.to_str().unwrap());
+    println!("downloading: {}", key);
+
     let mut resp = client
         .get_object()
         .bucket(bucket_name)

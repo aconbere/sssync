@@ -6,6 +6,7 @@ use rusqlite::Connection;
 use url::Url;
 
 use crate::db;
+use crate::helpers::bucket_from_url;
 use crate::models::migration::{Migration, MigrationState};
 use crate::models::transfer::{Transfer, TransferKind, TransferState};
 use crate::s3::upload_multipart::upload_multipart;
@@ -81,7 +82,7 @@ async fn run_upload(
     // for a url like `s3://anders.conbere.org/games` the url decomposes to
     // bucket: anders.conbere.org
     // key: /games
-    let bucket = u.host_str().unwrap();
+    let bucket = bucket_from_url(&u)?;
     let remote_directory = Path::new(u.path());
 
     let upload_count = uploads.len();
@@ -104,7 +105,7 @@ async fn run_upload(
 
         let result = upload_multipart(
             &client,
-            bucket,
+            &bucket,
             &remote_object_path,
             &local_object_path,
             force,
@@ -143,7 +144,7 @@ pub async fn run_download(
     // for a url like `s3://anders.conbere.org/games` the url decomposes to
     // bucket: anders.conbere.org
     // key: /games
-    let bucket = u.host_str().unwrap();
+    let bucket = bucket_from_url(&u)?;
     let remote_directory = Path::new(u.path());
 
     let download_count = downloads.len();
@@ -180,8 +181,8 @@ pub async fn run_download(
 
         let result = download_object(
             &client,
-            bucket,
-            remote_object_path.to_str().unwrap(),
+            &bucket,
+            &remote_object_path,
             &mut copy_file,
         )
         .await;

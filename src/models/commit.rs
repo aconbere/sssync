@@ -121,8 +121,6 @@ pub fn diff_commit_list_left(
     left: &Vec<Commit>,
     right: &Vec<Commit>,
 ) -> Result<Vec<Commit>> {
-    println!("Left: {:?}", left);
-    println!("Right: {:?}", right);
     match diff_commit_list(left, right) {
         CompareResult::NoSharedParent => {
             Err(anyhow!("Remote has no shared parent"))

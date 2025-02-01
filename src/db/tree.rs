@@ -1,12 +1,12 @@
-use std::collections::HashSet;
 use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use rusqlite::params;
 use rusqlite::Connection;
 
 use crate::models::commit::Commit;
 use crate::models::tree_file::TreeFile;
+use crate::tree::TreeDiff;
 
 /* A Tree represents a flattened file tree: A heirchal list of files, each
  * with a hash, a size in bytes, and a commit hash that connects them to the
@@ -54,10 +54,7 @@ pub fn insert_batch(
     Ok(())
 }
 
-pub fn get(
-    connection: &Connection,
-    hash: &str,
-) -> Result<HashSet<TreeFile>, rusqlite::Error> {
+pub fn get(connection: &Connection, hash: &str) -> Result<Vec<TreeFile>> {
     let mut statement = connection.prepare(
         "
         SELECT
@@ -69,7 +66,7 @@ pub fn get(
         ",
     )?;
 
-    statement
+    let result: Vec<TreeFile> = statement
         .query_map(params![hash], |row| {
             Ok(TreeFile {
                 path: row.get(0)?,
@@ -77,10 +74,11 @@ pub fn get(
                 size_bytes: row.get(2)?,
                 commit_hash: row.get(3)?,
             })
-        })
+        })?
         .into_iter()
         .flatten()
-        .collect()
+        .collect();
+    Ok(result)
 }
 
 pub fn get_by_path(
@@ -108,19 +106,41 @@ pub fn get_by_path(
     })
 }
 
-/* Returns all the files added in all of the commits in commits
- */
-pub fn additions(
+// Note, I think this might actually need to collect up
+// all of the previous files from all the previous commits
+// into a big tree and then diff agains the most recent.
+//
+// But maybe that's for another day
+pub fn diff_commits(
+    connection: &Connection,
+    old_hash: &str,
+    new_hash: &str,
+) -> Result<TreeDiff> {
+    let old_tree = get(connection, old_hash)?;
+    let new_tree = get(connection, new_hash)?;
+    Ok(TreeDiff::new(&old_tree, &new_tree))
+}
+
+pub fn diff_all_commits(
     connection: &Connection,
     commits: &Vec<Commit>,
-) -> Result<HashSet<TreeFile>> {
-    // Fast forward commits
-    let mut init: HashSet<TreeFile> = HashSet::new();
+) -> Result<TreeDiff> {
+    let head = commits.first().ok_or(anyhow!("no diff"))?;
+    let parents: Vec<String> = commits
+        .iter()
+        .map(|c| c.parent_hash.clone())
+        .flatten()
+        .collect();
 
-    for commit in commits {
-        let t = get(connection, &commit.hash)?;
-        init.extend(t);
+    // Fast forward commits
+    let mut all_files: Vec<TreeFile> = Vec::new();
+
+    for parent_hash in parents {
+        let mut t = get(connection, &parent_hash)?;
+        all_files.append(&mut t);
     }
 
-    Ok(init)
+    let head_tree = get(connection, &head.hash)?;
+
+    Ok(TreeDiff::new(&all_files, &head_tree))
 }
