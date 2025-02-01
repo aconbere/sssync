@@ -1,14 +1,13 @@
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use anyhow::{anyhow, Result};
 use rusqlite::Connection;
-use url::Url;
 
 use crate::db;
-use crate::helpers::bucket_from_url;
 use crate::models::migration::{Migration, MigrationState};
 use crate::models::transfer::{Transfer, TransferKind, TransferState};
+use crate::remote::RemoteInfo;
 use crate::s3::upload_multipart::upload_multipart;
 use crate::s3::{download_object, make_client};
 use crate::store;
@@ -61,10 +60,6 @@ pub async fn run(
     }
 }
 
-fn remote_object_path(remote_path: &Path, hash: &str) -> PathBuf {
-    remote_path.join(".sssync/objects").join(hash)
-}
-
 async fn run_upload(
     connection: &Connection,
     root_path: &Path,
@@ -75,38 +70,27 @@ async fn run_upload(
     let uploads =
         db::transfer::get_waiting_for_migration(connection, &migration.id)?;
 
-    println!("uploading {} files", uploads.len());
     let client = make_client().await;
-    let u = Url::parse(&migration.remote_location)?;
-
-    // for a url like `s3://anders.conbere.org/games` the url decomposes to
-    // bucket: anders.conbere.org
-    // key: /games
-    let bucket = bucket_from_url(&u)?;
-    let remote_directory = Path::new(u.path());
-
+    let remote_info = RemoteInfo::from_url(&migration.remote_location)?;
     let upload_count = uploads.len();
 
+    println!("uploading {} files", upload_count);
     db::migration::set_state(connection, migration, MigrationState::Running)?;
     for (i, upload) in uploads.iter().enumerate() {
-        let remote_object_path =
-            remote_object_path(remote_directory, &upload.object_hash);
+        let key = remote_info.object_key(&upload.object_hash);
 
         let local_object_path =
             store::object_path(root_path, &upload.object_hash);
 
         db::transfer::set_state(connection, upload, TransferState::Running)?;
+
         println!("Upload {}/{}", i, upload_count);
-        println!(
-            "Uploading {} to {}",
-            local_object_path.display(),
-            remote_object_path.display()
-        );
+        println!("\tUploading {} to {}", local_object_path.display(), key,);
 
         let result = upload_multipart(
             &client,
-            &bucket,
-            &remote_object_path,
+            &remote_info.bucket,
+            &key,
             &local_object_path,
             force,
         )
@@ -136,35 +120,22 @@ pub async fn run_download(
 ) -> Result<()> {
     let downloads =
         db::transfer::get_waiting_for_migration(connection, &migration.id)?;
-
-    println!("Downloading {} files", downloads.len());
-    let client = make_client().await;
-    let u = Url::parse(&migration.remote_location)?;
-
-    // for a url like `s3://anders.conbere.org/games` the url decomposes to
-    // bucket: anders.conbere.org
-    // key: /games
-    let bucket = bucket_from_url(&u)?;
-    let remote_directory = Path::new(u.path());
-
     let download_count = downloads.len();
 
+    let client = make_client().await;
+
+    let remote_info = RemoteInfo::from_url(&migration.remote_location)?;
+
+    println!("Downloading {} files", download_count);
     db::migration::set_state(connection, migration, MigrationState::Running)?;
     for (i, download) in downloads.iter().enumerate() {
-        let remote_object_path =
-            remote_object_path(remote_directory, &download.object_hash);
+        let key = remote_info.object_key(&download.object_hash);
 
-        let local_object_path =
+        let local_file_path =
             store::object_path(root_path, &download.object_hash);
 
-        let mut copy_file = File::create(&local_object_path)?;
-
         println!("Download {}/{}", i, download_count);
-        println!(
-            "Downloading {} to {}",
-            remote_object_path.display(),
-            local_object_path.display(),
-        );
+        println!("Downloading {} to {}", key, local_file_path.display());
 
         // If the file is already in our store skip it
         //
@@ -179,11 +150,12 @@ pub async fn run_download(
             }
         }
 
+        let mut output_file = File::create(&local_file_path)?;
         let result = download_object(
             &client,
-            &bucket,
-            &remote_object_path,
-            &mut copy_file,
+            &remote_info.bucket,
+            &key,
+            &mut output_file,
         )
         .await;
 

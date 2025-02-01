@@ -7,9 +7,9 @@ use rusqlite::Connection;
 use crate::db;
 use crate::migration;
 use crate::models::transfer::TransferKind;
+use crate::remote::{fetch_remote_db, RemoteInfo};
 use crate::s3::make_client;
 use crate::store;
-use crate::types::remote_kind::RemoteKind;
 
 pub async fn clone(url_str: &str, destination: &Path) -> Result<()> {
     if destination.exists() {
@@ -39,18 +39,13 @@ pub async fn clone(url_str: &str, destination: &Path) -> Result<()> {
     store::init(&local_path)?;
 
     let client = make_client().await;
-
     let remote_name = "origin";
+    let remote_info = RemoteInfo::from_url(url_str)?;
 
     println!("Fetching remote db");
-    let remote_db_path = crate::remote::fetch_remote_database(
-        &client,
-        destination,
-        RemoteKind::S3,
-        remote_name,
-        url_str,
-    )
-    .await?;
+    let remote_db_path =
+        fetch_remote_db(&client, &destination, &remote_name, &remote_info)
+            .await?;
 
     println!(
         "copying database: {} -> {}",

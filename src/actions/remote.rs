@@ -6,14 +6,14 @@ use url::Url;
 
 use crate::db;
 use crate::db::tree::diff_all_commits;
-use crate::helpers::{bucket_from_url, strip_leading_slash};
 use crate::models::commit;
 use crate::models::reference;
 use crate::models::remote;
 use crate::models::remote::Remote;
 use crate::models::transfer::TransferKind;
 use crate::models::tree_file::TreeFile;
-use crate::s3::make_client;
+use crate::remote::{fetch_remote_db, RemoteInfo};
+use crate::s3;
 use crate::s3::upload_multipart::upload_multipart;
 use crate::store;
 use crate::types::remote_kind::RemoteKind;
@@ -83,21 +83,14 @@ pub async fn init(
 
     match remote.kind {
         RemoteKind::S3 => {
-            let client = make_client().await;
-            let u = Url::parse(&remote.location)?;
-
-            let bucket = bucket_from_url(&u)?;
-
-            let remote_directory = Path::new(u.path());
-            let remote_db_path = remote_directory.join(".sssync/sssync.db");
+            let client = s3::make_client().await;
+            let remote_info = RemoteInfo::from_url(&remote.location)?;
 
             // check if the remote file exists before running init
             let head_object_res = client
                 .head_object()
-                .bucket(&bucket)
-                .key(strip_leading_slash(remote_db_path.to_str().ok_or(
-                    anyhow!("unable to unwrap remote_db_path to string"),
-                )?))
+                .bucket(&remote_info.bucket)
+                .key(&remote_info.database_key())
                 .send()
                 .await;
 
@@ -128,8 +121,8 @@ pub async fn init(
 
             upload_multipart(
                 &client,
-                &bucket,
-                &remote_db_path,
+                &remote_info.bucket,
+                &remote_info.database_key(),
                 &local_db_path,
                 force,
             )
@@ -153,27 +146,23 @@ pub async fn push(
 
     match remote.kind {
         RemoteKind::S3 => {
-            let s3_client = make_client().await;
-            let u = Url::parse(&remote.location)?;
+            let s3_client = s3::make_client().await;
+            let remote_info = RemoteInfo::from_url(&remote.location)?;
 
-            let bucket = bucket_from_url(&u)?;
-            let remote_directory = Path::new(u.path());
-
-            // database isn't right remotely so this updates with the
-            // bad copy.
-            let remote_db = crate::remote::fetch_remote_database(
+            let remote_db_path = fetch_remote_db(
                 &s3_client,
                 root_path,
-                remote.kind,
-                &remote.name,
-                &remote.location,
+                remote_name,
+                &remote_info,
             )
             .await?;
 
-            let remote_connection = Connection::open(&remote_db)?;
+            let remote_connection = Connection::open(&remote_db_path)?;
+
             let remote_head =
                 db::commit::get_by_ref_name(&remote_connection, &meta.head)?
                     .ok_or(anyhow!("No remote commit"))?;
+
             println!(
                 "Updating {} from {} to {}...",
                 remote_name, remote_head.hash, head.hash
@@ -231,8 +220,8 @@ pub async fn push(
 
             upload_multipart(
                 &s3_client,
-                &bucket,
-                &remote_directory.join(".sssync/sssync.db"),
+                &remote_info.bucket,
+                &remote_info.database_key(),
                 &store::remote_db_path(root_path, remote_name),
                 true,
             )
@@ -262,18 +251,15 @@ pub async fn fetch_remote_database(
 
     match remote.kind {
         RemoteKind::S3 => {
-            let client = make_client().await;
+            let client = s3::make_client().await;
 
-            let remote_path = crate::remote::fetch_remote_database(
-                &client,
-                root_path,
-                remote.kind,
-                &remote.name,
-                &remote.location,
-            )
-            .await?;
+            let remote_info = RemoteInfo::from_url(&remote.location)?;
 
-            let remote_connection = Connection::open(remote_path)?;
+            let remote_db_path =
+                fetch_remote_db(&client, root_path, remote_name, &remote_info)
+                    .await?;
+
+            let remote_connection = Connection::open(remote_db_path)?;
 
             // Upate the local database with the state of the remote database
             println!("Adding commits");
@@ -317,25 +303,21 @@ pub async fn push_remote_database(
 
     match remote.kind {
         RemoteKind::S3 => {
-            let client = make_client().await;
+            let client = s3::make_client().await;
 
             let local_db_path = store::remote_db_path(root_path, remote_name);
-
-            let u = Url::parse(&remote.location)?;
-            let bucket = bucket_from_url(&u)?;
-            let remote_directory = Path::new(u.path());
-            let remote_db_path = remote_directory.join(".sssync/sssync.db");
+            let remote_info = RemoteInfo::from_url(&remote.location)?;
 
             println!(
                 "Uploading: {} to {}",
                 local_db_path.display(),
-                remote_db_path.display()
+                remote_info.database_key()
             );
 
             upload_multipart(
                 &client,
-                &bucket,
-                &remote_db_path,
+                &remote_info.bucket,
+                &remote_info.database_key(),
                 &local_db_path,
                 force,
             )
