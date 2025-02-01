@@ -5,13 +5,12 @@ use rusqlite::Connection;
 use url::Url;
 
 use crate::db;
-use crate::db::tree::diff_all_commits;
+use crate::db::tree;
 use crate::models::commit;
 use crate::models::reference;
 use crate::models::remote;
 use crate::models::remote::Remote;
 use crate::models::transfer::TransferKind;
-use crate::models::tree_file::TreeFile;
 use crate::remote::{fetch_remote_db, RemoteInfo};
 use crate::s3;
 use crate::s3::upload_multipart::upload_multipart;
@@ -184,11 +183,9 @@ pub async fn push(
             let ff_commits =
                 commit::diff_commit_list_left(&local_commits, &remote_commits)?;
 
-            // figure out what files to upload
-            let diff = diff_all_commits(&connection, &ff_commits)?;
-
-            let mut updated_files: Vec<TreeFile> = diff.additions.clone();
-            updated_files.extend(diff.changes.clone());
+            // Figure out what files changed between the commits
+            let diff = tree::diff_all_commits(&connection, &ff_commits)?;
+            let updated_files = diff.all_updates();
 
             let to_upload_hashes: Vec<String> =
                 updated_files.iter().map(|f| f.file_hash.clone()).collect();
@@ -206,17 +203,10 @@ pub async fn push(
             )
             .await?;
 
-            for commit in ff_commits {
-                db::commit::insert(&remote_connection, &commit)?;
-            }
-            db::reference::update(
-                &remote_connection,
-                &meta.head,
-                reference::Kind::Branch,
-                &head.hash,
-                None,
-            )?;
-            remote_connection.close().unwrap();
+            // Update the local remote db before uploading it
+            // to the remote server
+
+            db::update_remote(&connection, &remote_connection)?;
 
             upload_multipart(
                 &s3_client,

@@ -106,6 +106,32 @@ pub fn get_by_path(
     })
 }
 
+pub fn get_all(
+    connection: &Connection,
+) -> Result<Vec<TreeFile>, rusqlite::Error> {
+    let mut statement = connection.prepare(
+        "
+        SELECT
+            path, file_hash, size_bytes, commit_hash
+        FROM
+            trees
+        ",
+    )?;
+
+    statement
+        .query_map(params![], |row| {
+            Ok(TreeFile {
+                path: row.get(0)?,
+                file_hash: row.get(1)?,
+                size_bytes: row.get(2)?,
+                commit_hash: row.get(3)?,
+            })
+        })
+        .into_iter()
+        .flatten()
+        .collect()
+}
+
 // Note, I think this might actually need to collect up
 // all of the previous files from all the previous commits
 // into a big tree and then diff agains the most recent.

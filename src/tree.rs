@@ -95,6 +95,12 @@ impl TreeDiff {
         }
         Ok(())
     }
+
+    pub fn all_updates(&self) -> Vec<TreeFile> {
+        let mut updated_files: Vec<TreeFile> = self.additions.clone();
+        updated_files.extend(self.changes.clone());
+        updated_files
+    }
 }
 
 #[cfg(test)]
