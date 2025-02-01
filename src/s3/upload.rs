@@ -17,13 +17,6 @@ pub async fn upload_object(
             .ok_or(anyhow!("could not convert key to string"))?,
     );
 
-    println!(
-        "Uploading: {} to {}:{}",
-        file_path.display(),
-        bucket_name,
-        key_str
-    );
-
     client
         .put_object()
         .bucket(bucket_name)
