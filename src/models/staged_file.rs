@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::hash::hash_file;
-use crate::models::file::lstat;
+use crate::models::file::metadata;
 use crate::models::tree_file::TreeFile;
 use anyhow::{anyhow, Result};
 use rusqlite::types::{
@@ -19,7 +19,7 @@ pub struct StagedFile {
 
 impl StagedFile {
     pub fn new(full_path: &Path, relative_path: &Path) -> Result<Self> {
-        let meta = lstat(full_path)?;
+        let meta = metadata(full_path)?;
 
         let file_hash = hash_file(full_path)?;
         let relative_path_str = relative_path
@@ -29,8 +29,8 @@ impl StagedFile {
         Ok(Self {
             file_hash,
             path: relative_path_str.to_string(),
-            size_bytes: meta.st_size,
-            modified_time_seconds: meta.st_mtime,
+            size_bytes: meta.size_bytes,
+            modified_time_seconds: meta.modified_time_seconds,
         })
     }
 
@@ -46,10 +46,10 @@ impl StagedFile {
     // Lstat the file found at path and compare the results to the StagedFile
     // compares size_bytes and modified_time. Use this function to help
     // avoid expensive file hashes.
-    pub fn compare_lstat(&self, path: &Path) -> Result<bool> {
-        let meta = lstat(path)?;
-        Ok(self.size_bytes == meta.st_size
-            && self.modified_time_seconds == meta.st_mtime)
+    pub fn compare_metadata(&self, path: &Path) -> Result<bool> {
+        let meta = metadata(path)?;
+        Ok(self.size_bytes == meta.size_bytes
+            && self.modified_time_seconds == meta.modified_time_seconds)
     }
 }
 

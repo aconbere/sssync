@@ -1,11 +1,9 @@
 use std::collections::HashSet;
-use std::ffi::CString;
 use std::fs;
-use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
 use anyhow::Result;
-use errno::errno;
 
 fn default_ignore() -> HashSet<String> {
     let mut ignore = HashSet::new();
@@ -52,14 +50,21 @@ fn get_all_inner(
     Ok(results)
 }
 
-pub fn lstat(path: &Path) -> std::io::Result<libc::stat> {
-    let mut stat: libc::stat = unsafe { std::mem::zeroed() };
+pub struct FileMeta {
+    pub size_bytes: i64,
+    pub modified_time_seconds: i64,
+}
 
-    let c_path = CString::new(path.as_os_str().as_bytes())?;
-    let c_errno = unsafe { libc::lstat(c_path.as_ptr(), &mut stat) };
+pub fn metadata(path: &Path) -> Result<FileMeta> {
+    let res = fs::symlink_metadata(path)?;
 
-    match c_errno {
-        0 => Ok(stat),
-        _ => Err(errno().into()),
-    }
+    let modified_time_seconds = res
+        .modified()?
+        .duration_since(SystemTime::UNIX_EPOCH)?
+        .as_secs() as i64;
+
+    Ok(FileMeta {
+        modified_time_seconds,
+        size_bytes: res.len() as i64,
+    })
 }

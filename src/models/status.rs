@@ -163,7 +163,7 @@ impl Status {
 
                 let full_path = root_path.join(&sf.path);
 
-                if sf.compare_lstat(&full_path).unwrap_or(false) {
+                if sf.compare_metadata(&full_path).unwrap_or(false) {
                     staged_but_changed.insert(path);
                 } else if !disk_files.contains(&path) {
                     staged_but_deleted.insert(path);
@@ -199,14 +199,15 @@ impl Status {
                 // just as a backup for situations like this?
                 let tf = tracked_files.get(df).unwrap();
 
-                let meta = file::lstat(df);
-
-                if meta.is_err() {
-                    return;
-                }
-
-                if tf.size_bytes != meta.unwrap().st_size {
-                    unstaged_additions.push(df.clone());
+                match file::metadata(df) {
+                    Ok(meta) => {
+                        if tf.size_bytes != meta.size_bytes {
+                            unstaged_additions.push(df.clone());
+                        }
+                    }
+                    _ => {
+                        return;
+                    }
                 }
             }
         });
