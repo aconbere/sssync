@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
 use rusqlite::Connection;
@@ -7,12 +7,12 @@ use url::Url;
 use crate::db;
 use crate::db::tree;
 use crate::models::commit;
-use crate::models::reference;
 use crate::models::remote;
 use crate::models::remote::Remote;
 use crate::models::transfer::TransferKind;
-use crate::remote::{fetch_remote_db, RemoteInfo};
+use crate::remote::{fetch_remote_db, fetch_remote_objects, RemoteInfo};
 use crate::s3;
+use crate::s3::make_client;
 use crate::s3::upload_multipart::upload_multipart;
 use crate::store;
 use crate::types::remote_kind::RemoteKind;
@@ -148,13 +148,8 @@ pub async fn push(
             let s3_client = s3::make_client().await;
             let remote_info = RemoteInfo::from_url(&remote.location)?;
 
-            let remote_db_path = fetch_remote_db(
-                &s3_client,
-                root_path,
-                remote_name,
-                &remote_info,
-            )
-            .await?;
+            let remote_db_path = store::remote_db_path(root_path, remote_name);
+            fetch_remote_db(&s3_client, &remote_info, root_path).await?;
 
             let remote_connection = Connection::open(&remote_db_path)?;
 
@@ -236,47 +231,46 @@ pub async fn fetch_remote_database(
     connection: &Connection,
     root_path: &Path,
     remote_name: &str,
-) -> Result<()> {
+) -> Result<PathBuf> {
     let remote = db::remote::get(connection, remote_name)?;
+    let remote_db_path = store::remote_db_path(root_path, remote_name);
+    let remote_info = RemoteInfo::from_url(&remote.location)?;
 
     match remote.kind {
         RemoteKind::S3 => {
             let client = s3::make_client().await;
 
-            let remote_info = RemoteInfo::from_url(&remote.location)?;
+            fetch_remote_db(&client, &remote_info, &remote_db_path).await?;
 
-            let remote_db_path =
-                fetch_remote_db(&client, root_path, remote_name, &remote_info)
-                    .await?;
+            //let remote_connection = Connection::open(&remote_db_path)?;
 
-            let remote_connection = Connection::open(remote_db_path)?;
-
+            // Why?
             // Upate the local database with the state of the remote database
-            println!("Adding commits");
-            let remote_commits = db::commit::get_all(&remote_connection)?;
-            for commit in remote_commits {
-                db::commit::insert(connection, &commit)?;
-            }
+            //println!("Adding commits");
+            //let remote_commits = db::commit::get_all(&remote_connection)?;
+            //for commit in remote_commits {
+            //    db::commit::insert(connection, &commit)?;
+            //}
 
-            println!("Adding refs");
-            let remote_refs = db::reference::get_all_by_kind(
-                &remote_connection,
-                None,
-                reference::Kind::Branch,
-            )?;
-            for _ref in remote_refs {
-                db::reference::insert(
-                    connection,
-                    &_ref.name,
-                    _ref.kind,
-                    &_ref.hash,
-                    Some(remote_name),
-                )?;
-            }
+            //println!("Adding refs");
+            //let remote_refs = db::reference::get_all_by_kind(
+            //    &remote_connection,
+            //    None,
+            //    reference::Kind::Branch,
+            //)?;
+            //for _ref in remote_refs {
+            //    db::reference::insert(
+            //        connection,
+            //        &_ref.name,
+            //        _ref.kind,
+            //        &_ref.hash,
+            //        Some(remote_name),
+            //    )?;
+            //}
 
-            Ok(())
+            Ok(remote_db_path.clone())
         }
-        RemoteKind::Local => Ok(()),
+        RemoteKind::Local => Ok(remote_db_path.clone()),
     }
 }
 
@@ -313,6 +307,28 @@ pub async fn push_remote_database(
             )
             .await?;
 
+            Ok(())
+        }
+        RemoteKind::Local => Ok(()),
+    }
+}
+
+/* Retreive all remote objects
+ */
+pub async fn fetch(
+    connection: &Connection,
+    root_path: &Path,
+    remote_name: &str,
+) -> Result<()> {
+    let remote = db::remote::get(connection, remote_name)?;
+    let remote_info = RemoteInfo::from_url(&remote.location)?;
+
+    match remote.kind {
+        RemoteKind::S3 => {
+            let client = make_client().await;
+            let remote_db_path = store::remote_db_path(root_path, remote_name);
+            fetch_remote_db(&client, &remote_info, &remote_db_path).await?;
+            fetch_remote_objects(&connection, &root_path, remote_name).await?;
             Ok(())
         }
         RemoteKind::Local => Ok(()),

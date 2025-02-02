@@ -1,5 +1,6 @@
 use std::fmt;
 
+use anyhow::{anyhow, Result};
 use clap::ValueEnum;
 use rusqlite::types::{
     FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef,
@@ -12,11 +13,12 @@ pub enum RemoteKind {
 }
 
 impl RemoteKind {
-    pub fn parse(s: &str) -> Result<RemoteKind, String> {
+    pub fn parse(s: &str) -> Result<RemoteKind> {
         match s {
             "S3" => Ok(RemoteKind::S3),
+            "s3" => Ok(RemoteKind::S3),
             "local" => Ok(RemoteKind::Local),
-            _ => Err(format!("invalid kind: {}", s)),
+            _ => Err(anyhow!("invalid Remote kind: {}", s)),
         }
     }
 }

@@ -11,6 +11,7 @@ pub static LOCAL: &str = "local";
 #[derive(Debug)]
 pub struct Reference {
     pub name: String,
+    #[allow(dead_code)]
     pub kind: Kind,
     pub hash: String,
     #[allow(dead_code)]
@@ -43,7 +44,7 @@ impl Kind {
     pub fn parse(s: &str) -> Result<Kind, String> {
         match s {
             "branch" => Ok(Kind::Branch),
-            _ => Err(format!("invalid kind: {}", s)),
+            _ => Err(format!("invalid reference kind: {}", s)),
         }
     }
 

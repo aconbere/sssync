@@ -85,6 +85,9 @@ pub enum Remote {
         force: bool,
     },
 
+    /// Fetch the remote database and objects
+    Fetch { name: String },
+
     /// Remove a remote
     Remove { name: String },
 
@@ -203,6 +206,11 @@ pub fn run() -> Result<()> {
             Remote::Push { name } => {
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(remote::push(&connection, root_path, name))?;
+                Ok(())
+            }
+            Remote::Fetch { name } => {
+                let rt = tokio::runtime::Runtime::new().unwrap();
+                rt.block_on(remote::fetch(&connection, root_path, name))?;
                 Ok(())
             }
             Remote::FetchRemoteDB { name } => {

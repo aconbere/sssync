@@ -13,7 +13,7 @@ impl TransferKind {
         match s {
             "Upload" => Ok(TransferKind::Upload),
             "Download" => Ok(TransferKind::Download),
-            _ => Err(format!("invalid kind: {}", s)),
+            _ => Err(format!("invalid Transfer kind: {}", s)),
         }
     }
 
@@ -55,7 +55,7 @@ impl TransferState {
             "Running" => Ok(TransferState::Running),
             "Failed" => Ok(TransferState::Failed),
             "Complete" => Ok(TransferState::Complete),
-            _ => Err(format!("invalid kind: {}", s)),
+            _ => Err(format!("invalid TransferState kind: {}", s)),
         }
     }
 

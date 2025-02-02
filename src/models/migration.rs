@@ -24,7 +24,7 @@ impl MigrationState {
             "Complete" => Ok(MigrationState::Complete),
             "Canceled" => Ok(MigrationState::Canceled),
             "Failed" => Ok(MigrationState::Failed),
-            _ => Err(format!("invalid kind: {}", s)),
+            _ => Err(format!("invalid Migration state kind: {}", s)),
         }
     }
 

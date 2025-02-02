@@ -63,7 +63,7 @@ impl ChangeKind {
         match s {
             "addition" => Ok(ChangeKind::Addition),
             "deletion" => Ok(ChangeKind::Deletion),
-            _ => Err(format!("invalid kind: {}", s)),
+            _ => Err(format!("invalid Change kind: {}", s)),
         }
     }
 
