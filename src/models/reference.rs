@@ -2,8 +2,6 @@ use rusqlite::types::{
     FromSql, FromSqlError, FromSqlResult, ToSql, ToSqlOutput, ValueRef,
 };
 
-pub static LOCAL: &str = "local";
-
 /* A reference is a name attached to a commit.
  *
  * Right now the only supported kind of reference is a branch.
@@ -14,23 +12,15 @@ pub struct Reference {
     #[allow(dead_code)]
     pub kind: Kind,
     pub hash: String,
-    #[allow(dead_code)]
-    pub remote: Option<String>,
 }
 
 impl Reference {
     #[allow(dead_code)]
-    pub fn new(
-        name: &str,
-        kind: Kind,
-        hash: &str,
-        remote: Option<&str>,
-    ) -> Self {
+    pub fn new(name: &str, kind: Kind, hash: &str) -> Self {
         Self {
             kind,
             name: name.to_string(),
             hash: hash.to_string(),
-            remote: remote.map(|s| s.to_string()),
         }
     }
 }

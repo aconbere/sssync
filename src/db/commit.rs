@@ -74,9 +74,7 @@ pub fn get(
     )
 }
 
-pub fn get_all(
-    connection: &Connection,
-) -> Result<Vec<Commit>, rusqlite::Error> {
+pub fn get_all(connection: &Connection) -> Result<Vec<Commit>> {
     let mut statement = connection.prepare(
         "
         SELECT
@@ -86,7 +84,7 @@ pub fn get_all(
         ",
     )?;
 
-    statement
+    let result: Vec<Commit> = statement
         .query_map(params![], |row| {
             Ok(Commit {
                 hash: row.get(0)?,
@@ -95,16 +93,17 @@ pub fn get_all(
                 created_unix_timestamp: row.get(3)?,
                 parent_hash: row.get(4)?,
             })
-        })
+        })?
         .into_iter()
         .flatten()
-        .collect()
+        .collect();
+    Ok(result)
 }
 
 pub fn get_children(
     connection: &Connection,
     head_hash: &str,
-) -> Result<Vec<Commit>, rusqlite::Error> {
+) -> Result<Vec<Commit>> {
     let mut statement = connection.prepare(
         "
         WITH RECURSIVE
@@ -133,7 +132,7 @@ pub fn get_children(
         ",
     )?;
 
-    statement
+    let result: Vec<Commit> = statement
         .query_map(params![head_hash], |row| {
             Ok(Commit {
                 hash: row.get(0)?,
@@ -142,10 +141,11 @@ pub fn get_children(
                 created_unix_timestamp: row.get(3)?,
                 parent_hash: row.get(4)?,
             })
-        })
+        })?
         .into_iter()
         .flatten()
-        .collect()
+        .collect();
+    Ok(result)
 }
 
 pub fn get_by_ref_name(

@@ -71,7 +71,6 @@ pub fn commit(connection: &Connection, root_path: &Path) -> Result<()> {
         &status.ref_name,
         Kind::Branch,
         &commit.hash,
-        None,
     )?;
     db::staging::delete(connection)?;
 

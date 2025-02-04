@@ -39,6 +39,10 @@ pub fn init(connection: &Connection) -> Result<()> {
     Ok(())
 }
 
+/* Updates the remote db that's been downloaded locally
+ *
+ * Used before pushing updates up to the remote location
+ */
 pub fn update_remote(
     local_connection: &Connection,
     remote_connection: &Connection,
@@ -61,7 +65,6 @@ pub fn update_remote(
         &remote_meta.head,
         models::reference::Kind::Branch,
         &local_meta.head,
-        None,
     )?;
 
     Ok(())

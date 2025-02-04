@@ -5,7 +5,6 @@ use rusqlite::Connection;
 use crate::models::meta::Meta;
 
 pub fn create_table(connection: &Connection) -> Result<()> {
-    println!("meta::create_table");
     connection.execute(
         "
         CREATE TABLE
@@ -20,13 +19,12 @@ pub fn create_table(connection: &Connection) -> Result<()> {
 }
 
 pub fn update(connection: &Connection, meta: &Meta) -> Result<()> {
-    println!("meta::update");
     connection.execute(
         "
-        INSERT INTO
-            meta (head)
-        VALUES
-            (?1)
+        UPDATE
+            meta
+        SET
+           head = (?1)
         ",
         params![meta.head],
     )?;

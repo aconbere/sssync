@@ -5,6 +5,7 @@ pub mod commit;
 pub mod diff;
 pub mod init;
 pub mod log;
+pub mod merge;
 pub mod migration;
 pub mod remote;
 pub mod reset;

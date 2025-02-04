@@ -8,6 +8,18 @@ use crate::models;
 use crate::models::meta::Meta;
 use crate::tree::TreeDiff;
 
+pub fn show(connection: &Connection) -> Result<()> {
+    let meta = db::meta::get(connection)?;
+
+    let head = db::commit::get_by_ref_name(connection, &meta.head)?
+        .ok_or(anyhow!("Head is bad - no matching ref name"))?;
+
+    println!("On branch: {}", meta.head);
+    println!("\tref: {}", head.hash);
+
+    Ok(())
+}
+
 pub fn add(
     connection: &Connection,
     name: &str,
@@ -27,7 +39,6 @@ pub fn add(
         name,
         models::reference::Kind::Branch,
         &commit_hash,
-        None,
     )?;
     Ok(())
 }
@@ -43,9 +54,10 @@ pub fn switch(
         return Err(anyhow!("There are currently staged files: Commit your current work or reset your state to continue"));
     }
 
-    let reference = db::reference::get(connection, None, name)?;
+    let reference = db::reference::get(connection, name)?;
     let commit = db::commit::get(connection, &reference.hash)?;
     let meta = db::meta::get(connection)?;
+
     let head = db::commit::get_by_ref_name(connection, &meta.head)?
         .ok_or(anyhow!("Head is bad - no matching ref name"))?;
 
@@ -57,16 +69,23 @@ pub fn switch(
     db::meta::update(connection, &Meta::new(&reference.name))
 }
 
+/* Lists all branches in the local repository
+ */
 pub fn list(connection: &Connection) -> Result<()> {
+    let meta = db::meta::get(connection)?;
+
     let branches = db::reference::get_all_by_kind(
         connection,
-        None,
         models::reference::Kind::Branch,
     )?;
 
     println!("Branches:");
     for b in branches {
-        println!("\t{}", b.name)
+        if meta.head == b.name {
+            println!("\t* {}", b.name)
+        } else {
+            println!("\t{}", b.name)
+        }
     }
     Ok(())
 }

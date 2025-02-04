@@ -93,6 +93,7 @@ pub fn commits_since(haystack: &Vec<Commit>, needle: &Commit) -> Vec<Commit> {
 
 pub enum CompareResult {
     Diff {
+        shared_parent: Commit,
         left: Vec<Commit>,
         right: Vec<Commit>,
     },
@@ -108,6 +109,7 @@ pub fn diff_commit_list(
 ) -> CompareResult {
     if let Some(shared_parent) = get_shared_parent(left, right) {
         CompareResult::Diff {
+            shared_parent: shared_parent.clone(),
             left: commits_since(left, &shared_parent),
             right: commits_since(right, &shared_parent),
         }
@@ -125,7 +127,7 @@ pub fn diff_commit_list_left(
         CompareResult::NoSharedParent => {
             Err(anyhow!("Remote has no shared parent"))
         }
-        CompareResult::Diff { left, right } => {
+        CompareResult::Diff { left, right, .. } => {
             if !right.is_empty() {
                 Err(anyhow!(
                     "no fast forward, remote has commits not in the current db"

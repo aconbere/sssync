@@ -5,8 +5,8 @@ use rusqlite::Connection;
 use url::Url;
 
 use crate::db;
-use crate::db::tree;
 use crate::models::commit;
+use crate::models::reference;
 use crate::models::remote;
 use crate::models::remote::Remote;
 use crate::models::transfer::TransferKind;
@@ -15,6 +15,7 @@ use crate::s3;
 use crate::s3::make_client;
 use crate::s3::upload_multipart::upload_multipart;
 use crate::store;
+use crate::tree;
 use crate::types::remote_kind::RemoteKind;
 
 // Add a remote to the repository
@@ -179,8 +180,8 @@ pub async fn push(
                 commit::diff_commit_list_left(&local_commits, &remote_commits)?;
 
             // Figure out what files changed between the commits
-            let diff = tree::diff_all_commits(&connection, &ff_commits)?;
-            let updated_files = diff.all_updates();
+            let file_diff = tree::diff_list(&connection, &ff_commits)?;
+            let updated_files = file_diff.all_updates();
 
             let to_upload_hashes: Vec<String> =
                 updated_files.iter().map(|f| f.file_hash.clone()).collect();
@@ -333,4 +334,25 @@ pub async fn fetch(
         }
         RemoteKind::Local => Ok(()),
     }
+}
+
+pub fn branch_list(
+    connection: &Connection,
+    root_path: &Path,
+    remote_name: &str,
+) -> Result<()> {
+    db::remote::get(connection, remote_name)?;
+    let remote_db_path = store::remote_db_path(root_path, remote_name);
+    let remote_connection = Connection::open(&remote_db_path)?;
+    let branches = db::reference::get_all_by_kind(
+        &remote_connection,
+        reference::Kind::Branch,
+    )?;
+
+    println!("Branches:");
+    for b in branches {
+        println!("\t{}", b.name)
+    }
+
+    Ok(())
 }

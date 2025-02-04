@@ -3,7 +3,7 @@ use rusqlite;
 use rusqlite::params;
 use rusqlite::Connection;
 
-use crate::models::reference::{Kind, Reference, LOCAL};
+use crate::models::reference::{Kind, Reference};
 
 pub fn create_table(connection: &Connection) -> Result<()> {
     connection.execute(
@@ -13,8 +13,7 @@ pub fn create_table(connection: &Connection) -> Result<()> {
                 name TEXT NOT NULL,
                 kind TEXT NOT NULL,
                 hash TEXT NOT NULL,
-                remote TEXT,
-                PRIMARY KEY (name, kind, remote)
+                PRIMARY KEY (name, kind)
             )
         ",
         params![],
@@ -27,16 +26,15 @@ pub fn insert(
     name: &str,
     kind: Kind,
     hash: &str,
-    remote: Option<&str>,
 ) -> Result<()> {
     connection.execute(
         "
         INSERT INTO
-            refs (name, kind, hash, remote)
+            refs (name, kind, hash)
         VALUES
-            (?1, ?2, ?3, ?4)
+            (?1, ?2, ?3)
         ",
-        params![name, kind, hash, remote.unwrap_or(LOCAL)],
+        params![name, kind, hash],
     )?;
     Ok(())
 }
@@ -46,47 +44,43 @@ pub fn update(
     name: &str,
     kind: Kind,
     hash: &str,
-    remote: Option<&str>,
 ) -> Result<()> {
     connection.execute(
         "
         INSERT INTO
-            refs (name, kind, hash, remote)
+            refs (name, kind, hash)
         VALUES
-            (?1, ?2, ?3, ?4)
-        ON CONFLICT (name, kind, remote)
+            (?1, ?2, ?3)
+        ON CONFLICT (name, kind)
         DO UPDATE
         SET
             hash = excluded.hash
         ",
-        params![name, kind, hash, remote.unwrap_or(LOCAL)],
+        params![name, kind, hash],
     )?;
     Ok(())
 }
 
 pub fn get_all_by_kind(
     connection: &Connection,
-    remote: Option<&str>,
     kind: Kind,
 ) -> Result<Vec<Reference>, rusqlite::Error> {
     let mut statement = connection.prepare(
         "
         SELECT
-            name, kind, hash, remote
+            name, kind, hash
         FROM
             refs
         WHERE
-            kind = ?1 AND
-            remote = ?2
+            kind = ?1
         ",
     )?;
     statement
-        .query_map(params![kind, remote.unwrap_or("local")], |row| {
+        .query_map(params![kind], |row| {
             Ok(Reference {
                 name: row.get(0)?,
                 kind: row.get(1)?,
                 hash: row.get(2)?,
-                remote: row.get(3)?,
             })
         })
         .into_iter()
@@ -96,7 +90,6 @@ pub fn get_all_by_kind(
 
 pub fn get(
     connection: &Connection,
-    remote: Option<&str>,
     name: &str,
 ) -> Result<Reference, rusqlite::Error> {
     let mut statement = connection.prepare(
@@ -105,20 +98,17 @@ pub fn get(
             name,
             kind,
             hash,
-            remote
         FROM
             refs
         WHERE
-            name = ?1 AND
-            remote = ?2
+            name = ?1
         ",
     )?;
-    statement.query_row(params![name, remote], |row| {
+    statement.query_row(params![name], |row| {
         Ok(Reference {
             name: row.get(0)?,
             kind: row.get(1)?,
             hash: row.get(2)?,
-            remote: row.get(3)?,
         })
     })
 }

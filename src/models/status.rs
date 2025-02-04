@@ -231,6 +231,13 @@ impl Status {
             ref_name: meta.head,
         })
     }
+
+    pub fn has_uncomitted_changes(&self) -> bool {
+        !self.staged_additions.is_empty()
+            && !self.staged_deletions.is_empty()
+            && !self.unstaged_additions.is_empty()
+            && !self.unstaged_deletions.is_empty()
+    }
 }
 
 #[derive(Clone, Debug)]

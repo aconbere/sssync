@@ -2,9 +2,13 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
+use anyhow::{anyhow, Result};
+use rusqlite::Connection;
+
+use crate::db;
+use crate::models::commit::Commit;
 use crate::models::tree_file::{TreeFile, TreeFileFileHash, TreeFilePathHash};
 use crate::store;
-use anyhow::Result;
 
 #[derive(Debug)]
 pub struct TreeDiff {
@@ -89,6 +93,10 @@ impl TreeDiff {
             let destination = root_path.join(&a.path);
             store::export_to(root_path, &a.file_hash, &destination)?;
         }
+        for a in &self.changes {
+            let destination = root_path.join(&a.path);
+            store::export_to(root_path, &a.file_hash, &destination)?;
+        }
         for d in &self.deletions {
             let destination = root_path.join(&d.path);
             fs::remove_file(destination)?;
@@ -101,6 +109,60 @@ impl TreeDiff {
         updated_files.extend(self.changes.clone());
         updated_files
     }
+}
+
+pub fn diff_parent(
+    connection: &Connection,
+    commit: &Commit,
+) -> Result<TreeDiff> {
+    let tree = db::tree::get(&connection, &commit.hash)?;
+    // If there is no parent hash then the tree is all there is
+    if let Some(parent_hash) = &commit.parent_hash {
+        let parent_tree = db::tree::get(&connection, &parent_hash)?;
+        Ok(TreeDiff::new(&tree, &parent_tree))
+    } else {
+        let parent_tree: Vec<TreeFile> = Vec::new();
+        Ok(TreeDiff::new(&tree, &parent_tree))
+    }
+}
+
+// Note, I think this might actually need to collect up
+// all of the previous files from all the previous commits
+// into a big tree and then diff agains the most recent.
+//
+// But maybe that's for another day
+pub fn diff(
+    connection: &Connection,
+    old_hash: &str,
+    new_hash: &str,
+) -> Result<TreeDiff> {
+    let old_tree = db::tree::get(connection, old_hash)?;
+    let new_tree = db::tree::get(connection, new_hash)?;
+    Ok(TreeDiff::new(&old_tree, &new_tree))
+}
+
+pub fn diff_list(
+    connection: &Connection,
+    commits: &Vec<Commit>,
+) -> Result<TreeDiff> {
+    let head = commits.first().ok_or(anyhow!("no diff"))?;
+    let parents: Vec<String> = commits
+        .iter()
+        .map(|c| c.parent_hash.clone())
+        .flatten()
+        .collect();
+
+    // Fast forward commits
+    let mut all_files: Vec<TreeFile> = Vec::new();
+
+    for parent_hash in parents {
+        let mut t = db::tree::get(connection, &parent_hash)?;
+        all_files.append(&mut t);
+    }
+
+    let head_tree = db::tree::get(connection, &head.hash)?;
+
+    Ok(TreeDiff::new(&all_files, &head_tree))
 }
 
 #[cfg(test)]

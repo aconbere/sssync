@@ -5,8 +5,8 @@ use clap::{Parser, Subcommand};
 use rusqlite::Connection;
 
 use crate::actions::{
-    add, branch, clone, commit, diff, init, log, migration, remote, reset,
-    status, tree,
+    add, branch, clone, commit, diff, init, log, merge, migration, remote,
+    reset, status, tree,
 };
 use crate::db::repo_db_path;
 use crate::store::get_root_path;
@@ -32,6 +32,9 @@ pub enum Branch {
 
     /// List all branches
     List,
+
+    /// Show the current branch
+    Show,
 }
 
 #[derive(Subcommand, Debug)]
@@ -100,6 +103,9 @@ pub enum Remote {
         #[arg(long)]
         path: PathBuf,
     },
+
+    /// List all remote branches
+    Branches { name: String },
 }
 
 #[derive(Subcommand, Debug)]
@@ -154,6 +160,11 @@ pub enum Action {
 
     /// Clears currently staged changes
     Reset,
+
+    Merge {
+        branch: String,
+        remote: Option<String>,
+    },
 }
 
 pub fn run() -> Result<()> {
@@ -240,6 +251,10 @@ pub fn run() -> Result<()> {
                 remote::locate(&connection, name, path)?;
                 Ok(())
             }
+            Remote::Branches { name } => {
+                remote::branch_list(&connection, root_path, name)?;
+                Ok(())
+            }
         },
         Action::Branch { action } => match action {
             Branch::Add { name } => branch::add(&connection, name, None),
@@ -247,6 +262,7 @@ pub fn run() -> Result<()> {
                 branch::switch(&connection, root_path, name)
             }
             Branch::List => branch::list(&connection),
+            Branch::Show => branch::show(&connection),
         },
         Action::Migration { action } => match action {
             Migration::List {} => {
@@ -280,5 +296,8 @@ pub fn run() -> Result<()> {
         Action::Diff { hash } => diff::diff(&connection, hash),
         Action::Reset => reset::reset(&connection, root_path),
         Action::Tree { hash } => tree::tree(&connection, hash),
+        Action::Merge { branch, remote } => {
+            merge::merge(&connection, root_path, branch, remote)
+        }
     }
 }

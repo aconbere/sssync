@@ -6,6 +6,8 @@ It works a bit like git, where every file is hashed and stored and tracked in co
 
 Sssync doesn't solve any of the binary file duplication challanges around using git, so it's best suited for a collection of files that while large, aren't expected to change that frequently.
 
+Sssyncc also doesn't intend to deal with diffing and merging file states. When merging two branches with commits that both alter the same file, the authors job is to simply pick the final revision desired. If both changes need to be kept, the author must make a copy.
+
 ## How to get it
 
 Sssync is available on [crates.io](https://crates.io/crates/sssync). You can install it with:
@@ -21,32 +23,54 @@ Sssync is available on [crates.io](https://crates.io/crates/sssync). You can ins
 Inside of whatever directory you want to start managing with sssync, run:
 
 ```bash
-> sssync init .
+# sssync init <directory-path>
+> sssync init my-repository
 ```
 
-This will generate a new directory `.sssync` and set up the repository. Once that's done you can run `sssync add` to stage files for addition, and `sssync commit` to add the staged changes to the repository.
+This will generate a new directory `my-repository` and set up the sssnyc state. Once that's done you can run `sssync add` to stage files for addition, and `sssync commit` to add the staged changes to the repository.
 
 ### Setting up a remote
 
 Sssync has the ability to use S3 as a remote backend. To set up an S3 remote run the following:
 
 ```bash
-# sssync remote add <remote-name> <s3-url>
-> sssync remote add new-remote s3://example.com/path/to/bucket
+# sssync remote add <remote-name> <remote-url>
+> sssync remote add origin s3://example.com/path/to/bucket
 ```
 
 Then initialize the remote:
 
 ```bash
 # sssync remote init <remote-name>
-> sssync remote init new-remote
+> sssync remote init origin
 ```
 
-After this you can push changes to the remote:
+You can push changes to the remote:
 
 ```bash
 # sssync remote push <remote-name>
-> sssync remote push new-remote
+> sssync remote push origin
+```
+
+Once pushed a ssync repository somewhere else can clone the repository (note that clone will automatically name the remote "origin").
+
+```bash
+# sssync remote clone <remote-url>
+> sssync remote clone s3://example.com/path/to/bucket
+```
+
+And fetch new changes
+
+```bash
+# sssync remote fetch <remote-name>
+> sssync remote fetch origin
+```
+
+You can merge the remote changes into your current branch. A note, in sssync merges always act like git rebases. Your sequence of commits after the shared parent from the remote are all placed on top of the sequences of commits from the remote. Files that conflict are noted and need to be resolved by the author by picking which they want to keep.
+
+```bash
+# sssync merge <remote-name>:<branch-name>
+> sssync merge origin:main
 ```
 
 # How it works
@@ -107,7 +131,10 @@ CREATE TABLE staging (
 > sssync init
 > sssync add
 > sssync commit
-> sssync remote add example --kind s3 --location s3://test.bucket
+> sssync remote add example --location s3://test.bucket
 > sssync remote init example
 > sssync remote push example
+> sssync remote clone example
+> sssync remote fetch example
+> sssync merge example:main
 ```
