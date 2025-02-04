@@ -6,6 +6,7 @@ use rusqlite::Connection;
 use crate::db;
 use crate::models;
 use crate::models::meta::Meta;
+use crate::store;
 use crate::tree::TreeDiff;
 
 pub fn show(connection: &Connection) -> Result<()> {
@@ -65,7 +66,8 @@ pub fn switch(
     let future_tree = db::tree::get(connection, &commit.hash)?;
 
     let diff = TreeDiff::new(&current_tree, &future_tree);
-    diff.apply(root_path)?;
+
+    store::apply_diff(root_path, &diff)?;
     db::meta::update(connection, &Meta::new(&reference.name))
 }
 

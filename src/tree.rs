@@ -1,6 +1,4 @@
 use std::collections::HashSet;
-use std::fs;
-use std::path::Path;
 
 use anyhow::{anyhow, Result};
 use rusqlite::Connection;
@@ -8,7 +6,6 @@ use rusqlite::Connection;
 use crate::db;
 use crate::models::commit::Commit;
 use crate::models::tree_file::{TreeFile, TreeFileFileHash, TreeFilePathHash};
-use crate::store;
 
 #[derive(Debug)]
 pub struct TreeDiff {
@@ -18,6 +15,13 @@ pub struct TreeDiff {
 }
 
 impl TreeDiff {
+    pub fn empty() -> Self {
+        Self {
+            additions: vec![],
+            deletions: vec![],
+            changes: vec![],
+        }
+    }
     // The Problem:
     //
     // a: what files were added?
@@ -88,26 +92,64 @@ impl TreeDiff {
         }
     }
 
-    pub fn apply(&self, root_path: &Path) -> Result<()> {
-        for a in &self.additions {
-            let destination = root_path.join(&a.path);
-            store::export_to(root_path, &a.file_hash, &destination)?;
-        }
-        for a in &self.changes {
-            let destination = root_path.join(&a.path);
-            store::export_to(root_path, &a.file_hash, &destination)?;
-        }
-        for d in &self.deletions {
-            let destination = root_path.join(&d.path);
-            fs::remove_file(destination)?;
-        }
-        Ok(())
-    }
-
     pub fn all_updates(&self) -> Vec<TreeFile> {
         let mut updated_files: Vec<TreeFile> = self.additions.clone();
         updated_files.extend(self.changes.clone());
         updated_files
+    }
+
+    /* Adds two diffs together
+     *
+     * Operation is directionaly with other being applied "on top of" self.
+     * operation will return an error if other tries to change a files
+     * that self has deleted.
+     */
+    pub fn add(&self, other: &Self) -> Result<TreeDiff> {
+        // additions
+        // deletions
+        // changes
+
+        let additions_self = HashSet::from_iter(self.additions.clone());
+        let deletions_self = HashSet::from_iter(self.deletions.clone());
+        let changes_self = HashSet::from_iter(self.changes.clone());
+
+        let additions_other = HashSet::from_iter(other.additions.clone());
+        let deletions_other = HashSet::from_iter(other.deletions.clone());
+        let changes_other = HashSet::from_iter(other.changes.clone());
+
+        let deleted_changes: HashSet<TreeFile> = deletions_self
+            .intersection(&changes_other)
+            .cloned()
+            .collect();
+
+        if !deleted_changes.is_empty() {
+            return Err(anyhow!("Later change was deleted in earlier diff"));
+        }
+
+        let changes: Vec<TreeFile> =
+            changes_self.union(&changes_other).cloned().collect();
+
+        let additions: Vec<TreeFile> = additions_self
+            .union(&additions_other)
+            .cloned()
+            .collect::<HashSet<TreeFile>>()
+            .difference(&deletions_other)
+            .cloned()
+            .collect();
+
+        let deletions: Vec<TreeFile> = deletions_self
+            .union(&deletions_other)
+            .cloned()
+            .collect::<HashSet<TreeFile>>()
+            .difference(&additions_other)
+            .cloned()
+            .collect();
+
+        Ok(TreeDiff {
+            additions,
+            deletions,
+            changes,
+        })
     }
 }
 

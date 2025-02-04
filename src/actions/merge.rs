@@ -82,12 +82,13 @@ pub fn merge(
     // 3. apply the diff to the new parent
     // 4. create a new commit copying the contents of the old commit with that
     //    tree
+    let mut combined_diff = tree::TreeDiff::empty();
     for commit in &commits_diff {
-        let changes = tree::diff_parent(connection, &commit)?;
-        changes.apply(root_path)?;
+        let diff = tree::diff_parent(connection, &commit)?;
+        combined_diff = combined_diff.add(&diff)?;
     }
 
-    let file_diff = tree::diff_list(&connection, &commits_diff)?;
-    let updated_files = file_diff.all_updates();
+    store::apply_diff(root_path, &combined_diff)?;
+
     Ok(())
 }

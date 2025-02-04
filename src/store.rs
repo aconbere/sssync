@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Result};
 
+use crate::tree;
+
 pub const STORE_DIR: &str = ".sssync";
 pub const OBJECTS_DIR: &str = "objects";
 pub const REMOTES_DIR: &str = "remotes";
@@ -96,5 +98,21 @@ pub fn init(path: &Path) -> Result<()> {
     fs::create_dir(&store_path)?;
     fs::create_dir(&store_path.join(OBJECTS_DIR))?;
     fs::create_dir(&store_path.join(REMOTES_DIR))?;
+    Ok(())
+}
+
+pub fn apply_diff(path: &Path, diff: &tree::TreeDiff) -> Result<()> {
+    for a in &diff.additions {
+        let destination = path.join(&a.path);
+        export_to(path, &a.file_hash, &destination)?;
+    }
+    for a in &diff.changes {
+        let destination = path.join(&a.path);
+        export_to(path, &a.file_hash, &destination)?;
+    }
+    for d in &diff.deletions {
+        let destination = path.join(&d.path);
+        fs::remove_file(destination)?;
+    }
     Ok(())
 }
