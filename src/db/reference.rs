@@ -97,7 +97,7 @@ pub fn get(
         SELECT
             name,
             kind,
-            hash,
+            hash
         FROM
             refs
         WHERE

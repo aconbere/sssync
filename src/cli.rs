@@ -25,7 +25,7 @@ pub struct Cli {
 #[derive(Subcommand, Debug)]
 pub enum Branch {
     /// Add a branch to the repository
-    Add { name: String },
+    Add { name: String, hash: Option<String> },
 
     /// Switch to the branch [name]
     Switch { name: String },
@@ -35,6 +35,9 @@ pub enum Branch {
 
     /// Show the current branch
     Show,
+
+    /// Switch to the branch [name]
+    Set { hash: String },
 }
 
 #[derive(Subcommand, Debug)]
@@ -147,7 +150,16 @@ pub enum Action {
     },
 
     /// Show the list of commits starting at HEAD
-    Log,
+    Log {
+        #[arg(long)]
+        hash: Option<String>,
+
+        #[arg(long)]
+        branch: Option<String>,
+
+        #[arg(long)]
+        remote: Option<String>,
+    },
 
     /// Show the status of the repository
     Status,
@@ -257,12 +269,15 @@ pub fn run() -> Result<()> {
             }
         },
         Action::Branch { action } => match action {
-            Branch::Add { name } => branch::add(&connection, name, None),
+            Branch::Add { name, hash } => {
+                branch::add(&connection, name, hash.clone())
+            }
             Branch::Switch { name } => {
                 branch::switch(&connection, root_path, name)
             }
             Branch::List => branch::list(&connection),
             Branch::Show => branch::show(&connection),
+            Branch::Set { hash } => branch::set(&connection, &hash),
         },
         Action::Migration { action } => match action {
             Migration::List {} => {
@@ -292,7 +307,17 @@ pub fn run() -> Result<()> {
             let rel_path = cp.strip_prefix(root_path)?;
             add::add(&connection, root_path, rel_path)
         }
-        Action::Log => log::log(&connection),
+        Action::Log {
+            hash,
+            branch,
+            remote,
+        } => log::log(
+            &connection,
+            root_path,
+            hash.clone(),
+            branch.clone(),
+            remote.clone(),
+        ),
         Action::Diff { hash } => diff::diff(&connection, hash),
         Action::Reset => reset::reset(&connection, root_path),
         Action::Tree { hash } => tree::tree(&connection, hash),

@@ -17,10 +17,16 @@ pub fn store_path(root_path: &Path) -> PathBuf {
     root_path.join(STORE_DIR)
 }
 
-pub fn remote_db_path(root_path: &Path, name: &str) -> PathBuf {
-    store_path(root_path)
+pub fn remote_db_path(root_path: &Path, name: &str) -> Result<PathBuf> {
+    let path = store_path(root_path)
         .join(REMOTES_DIR)
-        .join(format!("{}.db", name))
+        .join(format!("{}.db", name));
+
+    if !path.exists() {
+        return Err(anyhow!("Remote with name: {} does not exist!", name));
+    }
+
+    Ok(path)
 }
 
 pub fn db_path(root_path: &Path) -> PathBuf {

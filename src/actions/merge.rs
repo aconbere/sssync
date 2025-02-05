@@ -16,7 +16,7 @@ fn get_source_commits(
     maybe_remote_name: &Option<String>,
 ) -> Result<Vec<Commit>> {
     if let Some(remote_name) = maybe_remote_name {
-        let remote_db_path = store::remote_db_path(root_path, &remote_name);
+        let remote_db_path = store::remote_db_path(root_path, &remote_name)?;
         let remote_connection = Connection::open(&remote_db_path)?;
 
         let branch = db::reference::get(&remote_connection, &branch_name)?;

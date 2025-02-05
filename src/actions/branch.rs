@@ -21,6 +21,11 @@ pub fn show(connection: &Connection) -> Result<()> {
     Ok(())
 }
 
+/* Adds a new branch to the repository
+ *
+ * If hash is specificed the branch will by pointed there,
+ * otherwise it will use the current head's ref
+ */
 pub fn add(
     connection: &Connection,
     name: &str,
@@ -29,6 +34,9 @@ pub fn add(
     let meta = db::meta::get(connection)?;
     let head = db::commit::get_by_ref_name(connection, &meta.head)?;
 
+    // When adding a branch we can optionally specify the hash at which to
+    // create the branch. If no hash is supplied we will use the current
+    // head's hash.
     let commit_hash = match (hash, head) {
         (Some(_hash), None) => _hash,
         (None, Some(_head)) => _head.hash,
@@ -40,6 +48,23 @@ pub fn add(
         name,
         models::reference::Kind::Branch,
         &commit_hash,
+    )?;
+    Ok(())
+}
+
+/* Update the ref of the current branch
+ */
+pub fn set(connection: &Connection, hash: &str) -> Result<()> {
+    let meta = db::meta::get(connection)?;
+
+    // ensure we have a valid head
+    let _ = db::commit::get_by_ref_name(connection, &meta.head)?;
+
+    db::reference::update(
+        connection,
+        &meta.head,
+        models::reference::Kind::Branch,
+        hash,
     )?;
     Ok(())
 }

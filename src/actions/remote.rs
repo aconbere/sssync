@@ -149,7 +149,7 @@ pub async fn push(
             let s3_client = s3::make_client().await;
             let remote_info = RemoteInfo::from_url(&remote.location)?;
 
-            let remote_db_path = store::remote_db_path(root_path, remote_name);
+            let remote_db_path = store::remote_db_path(root_path, remote_name)?;
             fetch_remote_db(&s3_client, &remote_info, root_path).await?;
 
             let remote_connection = Connection::open(&remote_db_path)?;
@@ -208,7 +208,7 @@ pub async fn push(
                 &s3_client,
                 &remote_info.bucket,
                 &remote_info.database_key(),
-                &store::remote_db_path(root_path, remote_name),
+                &store::remote_db_path(root_path, remote_name)?,
                 true,
             )
             .await?;
@@ -234,7 +234,7 @@ pub async fn fetch_remote_database(
     remote_name: &str,
 ) -> Result<PathBuf> {
     let remote = db::remote::get(connection, remote_name)?;
-    let remote_db_path = store::remote_db_path(root_path, remote_name);
+    let remote_db_path = store::remote_db_path(root_path, remote_name)?;
     let remote_info = RemoteInfo::from_url(&remote.location)?;
 
     match remote.kind {
@@ -290,7 +290,7 @@ pub async fn push_remote_database(
         RemoteKind::S3 => {
             let client = s3::make_client().await;
 
-            let local_db_path = store::remote_db_path(root_path, remote_name);
+            let local_db_path = store::remote_db_path(root_path, remote_name)?;
             let remote_info = RemoteInfo::from_url(&remote.location)?;
 
             println!(
@@ -327,7 +327,7 @@ pub async fn fetch(
     match remote.kind {
         RemoteKind::S3 => {
             let client = make_client().await;
-            let remote_db_path = store::remote_db_path(root_path, remote_name);
+            let remote_db_path = store::remote_db_path(root_path, remote_name)?;
             fetch_remote_db(&client, &remote_info, &remote_db_path).await?;
             fetch_remote_objects(&connection, &root_path, remote_name).await?;
             Ok(())
@@ -342,7 +342,7 @@ pub fn branch_list(
     remote_name: &str,
 ) -> Result<()> {
     db::remote::get(connection, remote_name)?;
-    let remote_db_path = store::remote_db_path(root_path, remote_name);
+    let remote_db_path = store::remote_db_path(root_path, remote_name)?;
     let remote_connection = Connection::open(&remote_db_path)?;
     let branches = db::reference::get_all_by_kind(
         &remote_connection,
