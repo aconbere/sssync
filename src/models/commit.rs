@@ -5,7 +5,7 @@ use anyhow::{anyhow, Result};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Commit {
     pub hash: String,
-    pub comment: String,
+    pub message: String,
     pub author: String,
     pub created_unix_timestamp: u64,
     pub parent_hash: Option<String>,
@@ -14,7 +14,7 @@ pub struct Commit {
 impl Commit {
     pub fn new(
         hash: &str,
-        comment: &str,
+        message: &str,
         author: &str,
         parent_hash: Option<String>,
     ) -> Result<Commit> {
@@ -22,7 +22,7 @@ impl Commit {
         Ok(Commit {
             parent_hash,
             hash: hash.to_string(),
-            comment: comment.to_string(),
+            message: message.to_string(),
             author: author.to_string(),
             created_unix_timestamp: time.as_secs(),
         })
@@ -53,26 +53,33 @@ impl Commit {
 //
 //      assert_eq!(result, Some(commit_b));
 //
-pub fn get_shared_parent(left: &[Commit], right: &[Commit]) -> Option<Commit> {
-    let mut shared_parent = None;
-
+pub fn get_shared_parent(left: &[Commit], right: &[Commit]) -> Result<Commit> {
     let mut left_i = left.len() - 1;
     let mut right_i = right.len() - 1;
+    let mut n = 0;
 
+    // Walk both lists in reverse order (starting from the first commit)
+    // look for the first commit that is different, the shared parent
+    // is the commit before this one.
     while let (Some(l), Some(r)) = (left.get(left_i), right.get(right_i)) {
-        if l.hash == r.hash {
-            shared_parent = Some(left[left_i].clone());
-            if left_i == 0 || right_i == 0 {
-                break;
-            }
-            left_i -= 1;
-            right_i -= 1;
-        } else {
+        // end of one of the lists
+        if left_i == 0 || right_i == 0 {
             break;
         }
+        if l.hash != r.hash {
+            // oops the very first commit doesn't match
+            // something bad happened
+            if n == 0 {
+                return Err(anyhow!("No shared parent"));
+            }
+            return Ok(l.clone());
+        }
+        left_i -= 1;
+        right_i -= 1;
+        n += 1;
     }
 
-    shared_parent
+    Ok(left[left_i].clone())
 }
 
 /* Takes a list of ordered commits and returns the tail of that list
@@ -107,7 +114,7 @@ pub fn diff_commit_list(
     left: &Vec<Commit>,
     right: &Vec<Commit>,
 ) -> CompareResult {
-    if let Some(shared_parent) = get_shared_parent(left, right) {
+    if let Ok(shared_parent) = get_shared_parent(left, right) {
         CompareResult::Diff {
             shared_parent: shared_parent.clone(),
             left: commits_since(left, &shared_parent),
@@ -124,16 +131,10 @@ pub fn diff_commit_list_left(
     right: &Vec<Commit>,
 ) -> Result<Vec<Commit>> {
     match diff_commit_list(left, right) {
-        CompareResult::NoSharedParent => {
-            Err(anyhow!("Remote has no shared parent"))
-        }
+        CompareResult::NoSharedParent => Err(anyhow!("no shared parent found")),
         CompareResult::Diff { left, right, .. } => {
-            if !right.is_empty() {
-                Err(anyhow!(
-                    "no fast forward, remote has commits not in the current db"
-                ))
-            } else if left.is_empty() {
-                Err(anyhow!("no differences between remote and local"))
+            if left.is_empty() && right.is_empty() {
+                Err(anyhow!("no differences between commits lists"))
             } else {
                 Ok(left)
             }
@@ -153,8 +154,8 @@ mod tests {
         let left = vec![commit_b.clone(), commit_a.clone()];
         let right = vec![commit_b.clone(), commit_a.clone()];
 
-        let result = get_shared_parent(&left, &right);
-        assert_eq!(result, Some(commit_b));
+        let result = get_shared_parent(&left, &right)?;
+        assert_eq!(result, commit_b);
         Ok(())
     }
 
@@ -167,8 +168,8 @@ mod tests {
         let left = vec![commit_c.clone(), commit_b.clone(), commit_a.clone()];
         let right = vec![commit_b.clone(), commit_a.clone()];
 
-        let result = get_shared_parent(&left, &right);
-        assert_eq!(result, Some(commit_b));
+        let result = get_shared_parent(&left, &right)?;
+        assert_eq!(result, commit_b);
         Ok(())
     }
 
@@ -181,8 +182,8 @@ mod tests {
         let left = vec![commit_b.clone(), commit_a.clone()];
         let right = vec![commit_c.clone(), commit_b.clone(), commit_a.clone()];
 
-        let result = get_shared_parent(&left, &right);
-        assert_eq!(result, Some(commit_b));
+        let result = get_shared_parent(&left, &right)?;
+        assert_eq!(result, commit_b);
         Ok(())
     }
 
@@ -198,6 +199,7 @@ mod tests {
             CompareResult::Diff {
                 left: _,
                 right: right_diff,
+                ..
             } => {
                 assert_eq!(right_diff, vec!(commit_b));
                 Ok(())
@@ -218,6 +220,7 @@ mod tests {
             CompareResult::Diff {
                 left: left_diff,
                 right: _,
+                ..
             } => {
                 assert_eq!(left_diff, vec!(commit_b));
                 Ok(())

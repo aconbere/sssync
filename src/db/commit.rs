@@ -12,7 +12,7 @@ pub fn create_table(connection: &Connection) -> Result<()> {
         CREATE TABLE
             commits (
                 hash TEXT PRIMARY KEY,
-                comment TEXT NOT NULL,
+                message TEXT NOT NULL,
                 author TEXT NOT NULL,
                 created_unix_timestamp INTEGER NOT NULL,
                 parent_hash TEXT
@@ -29,7 +29,7 @@ pub fn insert(connection: &Connection, commit: &Commit) -> Result<()> {
         INSERT OR IGNORE INTO
             commits (
                 hash,
-                comment,
+                message,
                 author,
                 created_unix_timestamp,
                 parent_hash
@@ -39,7 +39,7 @@ pub fn insert(connection: &Connection, commit: &Commit) -> Result<()> {
         ",
         params![
             commit.hash,
-            commit.comment,
+            commit.message,
             commit.author,
             commit.created_unix_timestamp,
             commit.parent_hash,
@@ -55,7 +55,7 @@ pub fn get(
     connection.query_row(
         "
         SELECT
-            hash, comment, author, created_unix_timestamp, parent_hash
+            hash, message, author, created_unix_timestamp, parent_hash
         FROM
             commits
         WHERE
@@ -65,7 +65,7 @@ pub fn get(
         |row| {
             Ok(Commit {
                 hash: row.get(0)?,
-                comment: row.get(1)?,
+                message: row.get(1)?,
                 author: row.get(2)?,
                 created_unix_timestamp: row.get(3)?,
                 parent_hash: row.get(4)?,
@@ -78,7 +78,7 @@ pub fn get_all(connection: &Connection) -> Result<Vec<Commit>> {
     let mut statement = connection.prepare(
         "
         SELECT
-            hash, comment, author, created_unix_timestamp, parent_hash
+            hash, message, author, created_unix_timestamp, parent_hash
         FROM
             commits
         ",
@@ -88,7 +88,7 @@ pub fn get_all(connection: &Connection) -> Result<Vec<Commit>> {
         .query_map(params![], |row| {
             Ok(Commit {
                 hash: row.get(0)?,
-                comment: row.get(1)?,
+                message: row.get(1)?,
                 author: row.get(2)?,
                 created_unix_timestamp: row.get(3)?,
                 parent_hash: row.get(4)?,
@@ -107,10 +107,10 @@ pub fn get_children(
     let mut statement = connection.prepare(
         "
         WITH RECURSIVE
-            log (hash, comment, author, created_unix_timestamp, parent_hash)
+            log (hash, message, author, created_unix_timestamp, parent_hash)
         AS (
             SELECT
-                c.hash, c.comment, c.author, c.created_unix_timestamp, c.parent_hash
+                c.hash, c.message, c.author, c.created_unix_timestamp, c.parent_hash
             FROM
                 commits c
             WHERE
@@ -119,14 +119,14 @@ pub fn get_children(
             UNION
 
             SELECT
-                c.hash, c.comment, c.author, c.created_unix_timestamp, c.parent_hash
+                c.hash, c.message, c.author, c.created_unix_timestamp, c.parent_hash
             FROM
                 commits c, log l
             WHERE 
                 c.hash = l.parent_hash
         )
         SELECT
-            hash, comment, author, created_unix_timestamp, parent_hash
+            hash, message, author, created_unix_timestamp, parent_hash
         FROM
             log
         ",
@@ -136,7 +136,7 @@ pub fn get_children(
         .query_map(params![head_hash], |row| {
             Ok(Commit {
                 hash: row.get(0)?,
-                comment: row.get(1)?,
+                message: row.get(1)?,
                 author: row.get(2)?,
                 created_unix_timestamp: row.get(3)?,
                 parent_hash: row.get(4)?,
@@ -156,7 +156,7 @@ pub fn get_by_ref_name(
         .query_row(
             "
         SELECT
-            c.hash, c.comment, c.author, c.created_unix_timestamp, c.parent_hash
+            c.hash, c.message, c.author, c.created_unix_timestamp, c.parent_hash
         FROM
             commits AS c
         JOIN
@@ -170,7 +170,7 @@ pub fn get_by_ref_name(
             |row| {
                 Ok(Commit {
                     hash: row.get(0)?,
-                    comment: row.get(1)?,
+                    message: row.get(1)?,
                     author: row.get(2)?,
                     created_unix_timestamp: row.get(3)?,
                     parent_hash: row.get(4)?,

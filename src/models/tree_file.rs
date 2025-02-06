@@ -1,6 +1,8 @@
 use std::cmp::{Eq, PartialEq};
 use std::hash::{Hash, Hasher};
 
+use crate::models::status::Hashable;
+
 #[derive(Clone, Debug, Hash)]
 pub struct TreeFile {
     pub path: String,
@@ -26,6 +28,12 @@ impl TreeFile {
             size_bytes: self.size_bytes,
             commit_hash: String::from(commit_hash),
         }
+    }
+}
+
+impl Hashable for TreeFile {
+    fn file_hash(&self) -> String {
+        self.file_hash.clone()
     }
 }
 

@@ -9,11 +9,15 @@ use crate::models::commit::Commit;
 use crate::models::reference::Kind;
 use crate::models::staged_file::Change;
 use crate::models::status::{
-    hash_all, intermediate_to_tree_files, IntermediateTree, Status,
+    hash_all, intermediate_to_tree_files, Hashable, IntermediateTree, Status,
 };
 use crate::store;
 
-pub fn commit(connection: &Connection, root_path: &Path) -> Result<()> {
+pub fn commit(
+    connection: &Connection,
+    root_path: &Path,
+    message: &str,
+) -> Result<()> {
     let staged_files = db::staging::get_all(connection)?;
     if staged_files.is_empty() {
         return Err(anyhow!("Staging is empty: Nothing to commit"));
@@ -60,10 +64,19 @@ pub fn commit(connection: &Connection, root_path: &Path) -> Result<()> {
         }
     }
 
-    let new_tree_vec: Vec<IntermediateTree> = new_tree.into_values().collect();
+    let tree_files: Vec<IntermediateTree> =
+        new_tree.clone().into_values().collect();
 
-    let hash = hash_all(&new_tree_vec);
-    let commit = Commit::new(&hash, "", "", parent_hash)?;
+    let hashable_tree_files: Vec<Box<dyn Hashable>> = new_tree
+        .into_iter()
+        .map(|(_, t)| {
+            let i: Box<dyn Hashable> = Box::new(t);
+            i
+        })
+        .collect();
+
+    let hash = hash_all(&hashable_tree_files);
+    let commit = Commit::new(&hash, message, "", parent_hash)?;
 
     db::commit::insert(connection, &commit)?;
     db::reference::update(
@@ -76,7 +89,7 @@ pub fn commit(connection: &Connection, root_path: &Path) -> Result<()> {
 
     db::tree::insert_batch(
         connection,
-        intermediate_to_tree_files(&new_tree_vec, &commit.hash),
+        intermediate_to_tree_files(&tree_files, &commit.hash),
     )?;
 
     // for every staged file we want to copy them to the object store

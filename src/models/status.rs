@@ -240,6 +240,19 @@ impl Status {
     }
 }
 
+pub trait Hashable {
+    fn file_hash(&self) -> String;
+}
+
+impl Hashable for IntermediateTree {
+    fn file_hash(&self) -> String {
+        match self {
+            IntermediateTree::Staged(sf) => sf.file_hash.clone(),
+            IntermediateTree::Committed(tf) => tf.file_hash.clone(),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum IntermediateTree {
     Staged(StagedFile),
@@ -261,14 +274,7 @@ pub fn intermediate_to_tree_files(
         .collect()
 }
 
-pub fn hash_all(files: &[IntermediateTree]) -> String {
-    let hashes: Vec<&str> = files
-        .iter()
-        .map(|f| match f {
-            IntermediateTree::Staged(sf) => sf.file_hash.as_str(),
-            IntermediateTree::Committed(tf) => tf.file_hash.as_str(),
-        })
-        .collect();
-
+pub fn hash_all(files: &Vec<Box<dyn Hashable>>) -> String {
+    let hashes: Vec<String> = files.iter().map(|f| f.file_hash()).collect();
     hash_string(hashes.join(""))
 }

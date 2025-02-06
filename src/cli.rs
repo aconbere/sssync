@@ -138,7 +138,10 @@ pub enum Action {
     Add { path: PathBuf },
 
     /// Commit changes to a repository
-    Commit,
+    Commit {
+        #[arg(long, required = true)]
+        message: String,
+    },
 
     /// Clone the remote located at [url] to destination [path]
     Clone {
@@ -286,7 +289,9 @@ pub fn run() -> Result<()> {
             }
             Migration::Show { id } => migration::show(&connection, id),
         },
-        Action::Commit => commit::commit(&connection, root_path),
+        Action::Commit { message } => {
+            commit::commit(&connection, root_path, &message)
+        }
         Action::Clone { url, path } => {
             println!("Action::Clone {} {}", url, path.display());
             Ok(())

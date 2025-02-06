@@ -181,7 +181,7 @@ pub async fn push(
 
             // Figure out what files changed between the commits
             let file_diff = tree::diff_list(&connection, &ff_commits)?;
-            let updated_files = file_diff.all_updates();
+            let updated_files = file_diff.updates();
 
             let to_upload_hashes: Vec<String> =
                 updated_files.iter().map(|f| f.file_hash.clone()).collect();

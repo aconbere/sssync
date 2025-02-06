@@ -31,17 +31,19 @@ pub fn log(
                 "can't specify a hash while also including branch"
             ));
         }
+        println!("Showing commits from: {}", hash);
         hash
     } else if let Some(branch_name) = maybe_branch_name {
         println!("Looking for : {}", branch_name);
         let reference = db::reference::get(target_connection, &branch_name)?;
+        println!("Showing commits from: {}", branch_name);
         reference.hash
     } else {
         let head = db::commit::get_by_ref_name(target_connection, &meta.head)?
             .ok_or(anyhow!("Invalid head, no commit found"))?;
+        println!("Showing commits from: {}", meta.head);
         head.hash
     };
-    println!("Showing commits from: {}", starting_hash);
 
     let commits = db::commit::get_children(target_connection, &starting_hash)?;
 
@@ -53,7 +55,8 @@ pub fn log(
             "Parent: {}",
             commit.parent_hash.unwrap_or_else(|| String::from("None"))
         );
-        println!("\n\t{}", commit.comment);
+        println!("\t{}", commit.message);
+        println!("");
     });
     Ok(())
 }

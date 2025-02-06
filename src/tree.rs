@@ -22,6 +22,7 @@ impl TreeDiff {
             changes: vec![],
         }
     }
+
     // The Problem:
     //
     // a: what files were added?
@@ -92,7 +93,7 @@ impl TreeDiff {
         }
     }
 
-    pub fn all_updates(&self) -> Vec<TreeFile> {
+    pub fn updates(&self) -> Vec<TreeFile> {
         let mut updated_files: Vec<TreeFile> = self.additions.clone();
         updated_files.extend(self.changes.clone());
         updated_files

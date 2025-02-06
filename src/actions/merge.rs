@@ -4,8 +4,8 @@ use anyhow::{anyhow, Result};
 use rusqlite::Connection;
 
 use crate::db;
-use crate::models::commit::{diff_commit_list_left, Commit};
-use crate::models::status::Status;
+use crate::models::commit::{diff_commit_list, Commit, CompareResult};
+use crate::models::status::{hash_all, Hashable, Status};
 use crate::store;
 use crate::tree;
 
@@ -57,8 +57,8 @@ pub fn merge(
     let destination_commits = db::commit::get_children(connection, &head.hash)?;
 
     /*
-     * left is source commits since the shared parent right is destination
-     * commits since the shared parent
+     * left is destination commits since the shared parent
+     * right is source commits since the shared parent
      *
      * Goal is to place all of the destination commits on top of the source
      * commits. To do this we will start with the source state. Then for
@@ -71,8 +71,17 @@ pub fn merge(
      * 2: Remote adds a file, local adds a file with the same name -> Keep
      * the new file
      */
-    let commits_diff =
-        diff_commit_list_left(&destination_commits, &source_commits)?;
+    let CompareResult::Diff {
+        left: commits_diff,
+        shared_parent,
+        ..
+    } = diff_commit_list(&destination_commits, &source_commits)
+    else {
+        return Err(anyhow!("no shared parent"));
+    };
+
+    // Note: Need to understand when both sides have differences, it /should/
+    // be as simple as
 
     // For each commit in the set of deetination commits that diverge from
     // the shared parent, rebuild on top of the source commits.
@@ -83,9 +92,30 @@ pub fn merge(
     // 4. create a new commit copying the contents of the old commit with that
     //    tree
     let mut combined_diff = tree::TreeDiff::empty();
+    let mut new_commits = Vec::new();
+    let mut parent_hash = shared_parent.hash;
+
     for commit in &commits_diff {
         let diff = tree::diff_parent(connection, &commit)?;
         combined_diff = combined_diff.add(&diff)?;
+        let updates = combined_diff.updates();
+
+        let hashable_files = updates
+            .into_iter()
+            .map(|f| {
+                let i: Box<dyn Hashable> = Box::new(f);
+                i
+            })
+            .collect();
+
+        let hash = hash_all(&hashable_files);
+        new_commits.push(Commit::new(
+            &hash,
+            &commit.message,
+            &commit.author,
+            Some(parent_hash.clone()),
+        ));
+        parent_hash = hash.to_string();
     }
 
     store::apply_diff(root_path, &combined_diff)?;
