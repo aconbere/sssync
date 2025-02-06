@@ -174,9 +174,16 @@ pub enum Action {
     Diff { hash: String },
 
     /// Clears currently staged changes
-    Reset,
+    Reset {
+        #[arg(long, action)]
+        hard: bool,
+    },
 
     Merge {
+        branch: String,
+        remote: Option<String>,
+    },
+    Rebase {
         branch: String,
         remote: Option<String>,
     },
@@ -324,10 +331,13 @@ pub fn run() -> Result<()> {
             remote.clone(),
         ),
         Action::Diff { hash } => diff::diff(&connection, hash),
-        Action::Reset => reset::reset(&connection, root_path),
+        Action::Reset { hard } => reset::reset(&connection, root_path, *hard),
         Action::Tree { hash } => tree::tree(&connection, hash),
         Action::Merge { branch, remote } => {
             merge::merge(&connection, root_path, branch, remote)
+        }
+        Action::Rebase { branch, remote } => {
+            merge::rebase(&connection, root_path, branch, remote)
         }
     }
 }

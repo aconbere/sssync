@@ -74,6 +74,9 @@ pub fn switch(
     root_path: &Path,
     name: &str,
 ) -> Result<()> {
+    // Note should use status here to precent /unstaged/
+    // changes
+    println!("switching branches");
     let staged_files = db::staging::get_all(connection)?;
 
     if !staged_files.is_empty() {
@@ -92,6 +95,7 @@ pub fn switch(
 
     let diff = TreeDiff::new(&current_tree, &future_tree);
 
+    println!("applying diff: {}", root_path.display());
     store::apply_diff(root_path, &diff)?;
     db::meta::update(connection, &Meta::new(&reference.name))
 }

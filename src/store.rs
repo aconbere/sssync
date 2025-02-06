@@ -110,15 +110,19 @@ pub fn init(path: &Path) -> Result<()> {
 pub fn apply_diff(path: &Path, diff: &tree::TreeDiff) -> Result<()> {
     for a in &diff.additions {
         let destination = path.join(&a.path);
+        println!("copying: {} -> {}", a.file_hash, destination.display());
         export_to(path, &a.file_hash, &destination)?;
     }
     for a in &diff.changes {
         let destination = path.join(&a.path);
+        println!("copying: {} -> {}", a.file_hash, destination.display());
         export_to(path, &a.file_hash, &destination)?;
     }
     for d in &diff.deletions {
         let destination = path.join(&d.path);
-        fs::remove_file(destination)?;
+        println!("removing: {}", destination.display());
+        // Skip errors with deletion, since they may not exist in the remote
+        _ = fs::remove_file(destination);
     }
     Ok(())
 }

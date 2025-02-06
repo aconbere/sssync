@@ -59,6 +59,12 @@ impl fmt::Display for Status {
     fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
         writeln!(w, "On branch: {}", self.ref_name)?;
 
+        if let Some(head_commit) = &self.head {
+            writeln!(w, "\thead: {}", head_commit.hash)?;
+        } else {
+            writeln!(w, "\tdetached head")?;
+        }
+
         if !self.staged_additions.is_empty() {
             writeln!(w, "\nFiles staged to be added:")?;
             for f in &self.staged_additions {

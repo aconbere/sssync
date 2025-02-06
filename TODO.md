@@ -14,7 +14,6 @@
 - Clear after complete
 
 # Bugs
-using i64 for size_bytes should be u64 (what's a negative byte?!)
-doesn't compile on windows
-
+- using i64 for size_bytes should be u64 (what's a negative byte?!)
+- need to add, message, author, and parent_hash into the hash for a commit
 
