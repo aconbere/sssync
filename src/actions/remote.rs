@@ -150,13 +150,13 @@ pub async fn push(
             let remote_info = RemoteInfo::from_url(&remote.location)?;
 
             let remote_db_path = store::remote_db_path(root_path, remote_name)?;
-            fetch_remote_db(&s3_client, &remote_info, root_path).await?;
+            println!("Fetching remote db: {}", remote_db_path.display());
+            fetch_remote_db(&s3_client, &remote_info, &remote_db_path).await?;
 
             let remote_connection = Connection::open(&remote_db_path)?;
-
             let remote_head =
                 db::commit::get_by_ref_name(&remote_connection, &meta.head)?
-                    .ok_or(anyhow!("No remote commit"))?;
+                    .ok_or(anyhow!("No remote commit: {}", meta.head))?;
 
             println!(
                 "Updating {} from {} to {}...",
@@ -242,32 +242,6 @@ pub async fn fetch_remote_database(
             let client = s3::make_client().await;
 
             fetch_remote_db(&client, &remote_info, &remote_db_path).await?;
-
-            //let remote_connection = Connection::open(&remote_db_path)?;
-
-            // Why?
-            // Upate the local database with the state of the remote database
-            //println!("Adding commits");
-            //let remote_commits = db::commit::get_all(&remote_connection)?;
-            //for commit in remote_commits {
-            //    db::commit::insert(connection, &commit)?;
-            //}
-
-            //println!("Adding refs");
-            //let remote_refs = db::reference::get_all_by_kind(
-            //    &remote_connection,
-            //    None,
-            //    reference::Kind::Branch,
-            //)?;
-            //for _ref in remote_refs {
-            //    db::reference::insert(
-            //        connection,
-            //        &_ref.name,
-            //        _ref.kind,
-            //        &_ref.hash,
-            //        Some(remote_name),
-            //    )?;
-            //}
 
             Ok(remote_db_path.clone())
         }

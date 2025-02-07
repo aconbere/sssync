@@ -57,14 +57,14 @@ pub fn update_remote(
         tree::insert(remote_connection, &t)?;
     }
 
-    let remote_meta = meta::get(remote_connection)?;
     let local_meta = meta::get(local_connection)?;
+    let local_ref = reference::get(local_connection, &local_meta.head)?;
 
     reference::update(
         &remote_connection,
-        &remote_meta.head,
-        models::reference::Kind::Branch,
         &local_meta.head,
+        models::reference::Kind::Branch,
+        &local_ref.hash,
     )?;
 
     Ok(())
